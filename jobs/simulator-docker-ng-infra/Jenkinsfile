@@ -1,0 +1,149 @@
+pipeline {
+    agent any
+
+    triggers {
+        gerrit(
+            customUrl: '',
+            gerritProjects: [[
+                branches: [[
+                    compareType: 'PLAIN', 
+                    pattern: 'master'
+                ]],
+                compareType: 'PLAIN',
+                disableStrictForbiddenFileVerification: false,
+                pattern: 'davidsaOpenu/simulator'
+            ]],
+            serverName: 'review.gerrithub.io',
+            triggerOnEvents: [
+                commentAddedContains(
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' + 
+                    '(\\n\\n)?\\s*(recheck)'
+                )
+            ]
+        )
+        cron('@daily')
+    }
+
+    options {
+        buildDiscarder(
+            logRotator(
+                daysToKeepStr: '14', 
+                numToKeepStr: '24'
+            )
+        )
+        timeout(time: 220, unit: 'MINUTES')
+        timestamps()
+    }
+
+    parameters {
+        string(
+            name: 'GERRIT_REFSPEC', 
+            defaultValue: 'refs/heads/master', 
+            description: ''
+        )
+        string(
+            name: 'GERRIT_BRANCH', 
+            defaultValue: 'master', 
+            description: ''
+        )
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    def repos = [
+                        [
+                            dir: 'simulator', 
+                            branch: params.GERRIT_BRANCH,
+                            url: 'https://review.gerrithub.io/davidsaOpenu/simulator'
+                        ],
+                        [
+                            dir: 'nvme-cli', 
+                            branch: 'master', 
+                            url: 'https://review.gerrithub.io/davidsaOpenu/nvme-cli'
+                        ],
+                        [
+                            dir: 'kernel', 
+                            branch: 'master', 
+                            url: 'https://review.gerrithub.io/davidsaOpenu/kernel',
+                            timeout: 20
+                        ],
+                        [
+                            dir: 'qemu', 
+                            branch: 'master', 
+                            url: 'https://review.gerrithub.io/davidsaOpenu/qemu'
+                        ],
+                        [
+                            dir: 'nvmeCompl/tnvme', 
+                            branch: 'rev-1.2',
+                            url: 'https://review.gerrithub.io/davidsaOpenu/tnvme'
+                        ],
+                        [
+                            dir: 'nvmeCompl/dnvme', 
+                            branch: 'master', 
+                            url: 'https://review.gerrithub.io/davidsaOpenu/dnvme'
+                        ]
+                    ]
+
+
+                    for (repo in repos) {
+                        if (repo.dir == 'kernel') {
+                            checkout(scmGit(
+                                branches: [[name: repo.branch]],
+                                extensions: [
+                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                    cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
+                                    [$class: 'CheckoutOption', timeout: repo.timeout]
+                                ],
+                                userRemoteConfigs: [
+                                    [url: repo.url]
+                                ]
+                            ))
+                        } else {
+                            dir(repo.dir) {
+                                deleteDir()
+                                git branch: repo.branch, url: repo.url
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Handle Depend-On') {
+            steps {
+                script {
+                    dir('simulator/infra/builder'){
+                        def decodedMessage = sh(
+                            script: "echo $GERRIT_CHANGE_COMMIT_MESSAGE | base64 -d",
+                            returnStdout: true
+                        ).trim()
+                        echo "Decoded message: ${decodedMessage}"
+                        sh "./handle-depend-on-instructions.sh" + 
+                           " '${WORKSPACE}' '${decodedMessage}'"
+                    }
+                }
+            }
+        }
+        
+        stage('Build and Test') {
+            steps {
+                dir('simulator/infra/builder'){
+                    sh './run-ci.sh'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    dir('simulator') {
+                        sh 'echo Deploy - TBD'
+                    }
+                }
+            }
+        }
+    }
+}
+

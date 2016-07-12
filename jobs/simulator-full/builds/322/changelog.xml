@@ -1,0 +1,45 @@
+<multi-scm-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/simulator">
+<![CDATA[commit 773c7e0c5184c4965c60f5dd355bc56c355c128d
+tree bb75d1d8a0b91b7ec9ed9cb5f879b880ef864b28
+parent 4b249b3ea285beb3ada55d68d41f1a6a06a61ba6
+author Yoav Kaempfer &lt;yoav.kaempfer@gmail.com&gt; 2017-09-24 21:06:40 +0300
+committer David Sariel &lt;davidsa@openu.ac.il&gt; 2017-09-29 00:31:59 -0400
+
+    Sanity Bug Fixes
+
+    - Add a reset button to the web page, which resets the statistics stored 
+    inside the analyzers.
+    - BUG FIX: Fix manager speed merging algorithm.
+    - BUG FIX: GET_PAGE_SIZE() now returns page size instead of sector size.
+
+    Change-Id: I931f600250f10ddecce10b13ec02b073da145fbe
+
+
+:100755 100755 f43db8e7eb5cdf8b4b2e28e381bf9ae6c1b7baf5 e6087d462cee8e92003e4b601cf395b09cd08765 M	eVSSIM/CONFIG/vssim_config_manager.c
+:100755 100755 b729271d84e366a1a1f9c2d641d16fffcf53d616 6a96fce933f9817cbd7890ef28a2930b13277058 M	eVSSIM/FTL_SOURCE/PERF_MODULE/ftl_perf_manager.c
+:100644 100644 6b6b70d933613749c1d8485738f3d1c0e5900d5d 144f9199044f7a9b219ff667ff0e1329270aba33 M	eVSSIM/LOG_MGR/logging_manager.c
+:100644 100644 67fdc673bd75c3c0b91987d4498939192bf00ecd 449622f7d99995b1d1e5bcc8158f972ee67d5541 M	eVSSIM/LOG_MGR/logging_parser.c
+:100644 100644 e200721c53e9c1a5537e7168d0d29e9bb035f2b9 2447ce92965a83b8b8c4e5eee8443dc2188cfeb7 M	eVSSIM/LOG_MGR/logging_rt_analyzer.c
+:100644 100644 f75fee3582433bfd7556af5dd7515918e04c14f4 a1351d148faf96bf02976aa1c291c167f59f231e M	eVSSIM/LOG_MGR/logging_rt_analyzer.h
+:100644 100644 d37825f1c72b2af25305b97ce2299553e4f02af0 05d88df9c9feb79eac2f7eb99dd62a801aa353cb M	eVSSIM/MONITOR/SERVER/logging_server.c
+:100644 100644 c0fc40bbf3ff5799358bdb0c7c474a7f3dca994c f3829ba80b209011b846bd4758c0ac2188f02718 M	eVSSIM/MONITOR/SERVER/logging_server.h
+:100644 100644 d63c3c7b9e717446c13a111144f1f8f011afa1c8 37581d9e78ae1b63e395badd2fbe19bade57f111 M	eVSSIM/MONITOR/SERVER/www/index.css
+:100644 100644 a1b466dd60a137974ae19981b5a50749de9113b4 93c3b668926e5aaa0e5af4720536fc81dac489d1 M	eVSSIM/MONITOR/SERVER/www/index.html
+:100755 100755 95e09f9c913814cc443bf83b182241bb47e588a6 21613bc49f114bf5a478eb487b00436c56da9a09 M	eVSSIM/SSD_MODULE/ssd_log_manager.c
+:100755 100755 9e8ba856133ebbb9a74ab58231e180deecd73183 b9d68f2dd3f83b48755f14f83e4d9d7398ca6c33 M	eVSSIM/SSD_MODULE/ssd_log_manager.h
+]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/simulator-ci">
+<![CDATA[]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/nvme-cli">
+<![CDATA[]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/nvmeCompl">
+<![CDATA[]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/3.16.2">
+<![CDATA[]]>
+</sub-log>
+</multi-scm-log>

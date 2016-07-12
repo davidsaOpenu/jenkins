@@ -1,0 +1,37 @@
+<multi-scm-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/simulator">
+<![CDATA[commit 592684f414e58f4bf59a81220fc8595ff9a16b4f
+tree 8e6f0a876a1f9115241b97d19702d522337e45b9
+parent 8347968c97641c452c276c516aa64e7d35eb5ac0
+author David Sariel &lt;davidsa@openu.ac.il&gt; 2018-07-14 21:20:55 +0300
+committer David Sariel &lt;davidsa@openu.ac.il&gt; 2018-07-15 19:12:49 +0300
+
+    Fix CentOS docker gate / Update Ubuntu docker gate
+
+    - fix CentOS Dockerfile to
+     -- get centos7 instead of centos6
+     -- install qt3, ansible, libwebsockets
+
+    - update Ubuntu Dockerfile to install qt and libwebsockets: ansible code
+     left to verify the existance of those packages
+
+    Change-Id: I337c7358045e002f988b8dfead4bb47dfba82189
+
+
+:100644 100644 654ee4e9994fcd6c977ae21931dbc084beb470db 08c73e81cc7d04785ba214cc352cd93179090e59 M	infra/ansible/roles/common/tasks/libwebsockets.yml
+:100644 100644 e931e85a3d0af5ab3661ca5615265732b5009feb 27b9b2c5a28de061a61a293bcd652c958c9de69c M	infra/ansible/roles/common/tasks/main.yml
+:100644 100644 2dbfd1ec125fa081d87719ba544d5e78014a9c33 64b59b521a4e8745a8e120a04b39a522b681b650 M	infra/ansible/roles/common/tasks/qt3.yml
+:100755 100755 0666dbbccb6d40a7a96cabfc9fed024984d42f3d 4f32af5053161350acec015551acf8521a5294d5 M	infra/docker/centos/Dockerfile
+:100755 100755 6b431b80d47f97c5e1a2fc4f55b1c9c3a5b5b15b 2716a2d5a9241101cefee2d704247bcbb49a6533 M	infra/docker/ubuntu/Dockerfile
+]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/nvme-cli">
+<![CDATA[]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/nvmeCompl">
+<![CDATA[]]>
+</sub-log>
+<sub-log scm="git https://review.gerrithub.io/davidsaOpenu/3.16.2">
+<![CDATA[]]>
+</sub-log>
+</multi-scm-log>
