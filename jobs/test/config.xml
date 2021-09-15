@@ -1,0 +1,166 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.36">
+  <actions/>
+  <description>&lt;!-- Managed by Jenkins Job Builder --&gt;</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GERRIT_REFSPEC</name>
+          <description></description>
+          <defaultValue>refs/heads/master</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>GERRIT_BRANCH</name>
+          <description></description>
+          <defaultValue>origin/master</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.GerritTrigger plugin="gerrit-trigger@2.30.0">
+          <spec></spec>
+          <gerritProjects>
+            <com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.data.GerritProject>
+              <compareType>PLAIN</compareType>
+              <pattern>davidsaOpenu/simulator</pattern>
+              <branches>
+                <com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.data.Branch>
+                  <compareType>REG_EXP</compareType>
+                  <pattern>master</pattern>
+                </com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.data.Branch>
+              </branches>
+              <disableStrictForbiddenFileVerification>false</disableStrictForbiddenFileVerification>
+            </com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.data.GerritProject>
+          </gerritProjects>
+          <skipVote>
+            <onSuccessful>false</onSuccessful>
+            <onFailed>false</onFailed>
+            <onUnstable>false</onUnstable>
+            <onNotBuilt>false</onNotBuilt>
+          </skipVote>
+          <gerritBuildStartedVerifiedValue>0</gerritBuildStartedVerifiedValue>
+          <gerritBuildSuccessfulVerifiedValue>1</gerritBuildSuccessfulVerifiedValue>
+          <gerritBuildFailedVerifiedValue>-1</gerritBuildFailedVerifiedValue>
+          <gerritBuildUnstableVerifiedValue>-1</gerritBuildUnstableVerifiedValue>
+          <silentMode>false</silentMode>
+          <notificationLevel></notificationLevel>
+          <silentStartMode>false</silentStartMode>
+          <escapeQuotes>true</escapeQuotes>
+          <nameAndEmailParameterMode>PLAIN</nameAndEmailParameterMode>
+          <dependencyJobsNames></dependencyJobsNames>
+          <commitMessageParameterMode>BASE64</commitMessageParameterMode>
+          <changeSubjectParameterMode>PLAIN</changeSubjectParameterMode>
+          <commentTextParameterMode>PLAIN</commentTextParameterMode>
+          <buildStartMessage></buildStartMessage>
+          <buildFailureMessage>FAILURE!</buildFailureMessage>
+          <buildSuccessfulMessage>SUCCESS!</buildSuccessfulMessage>
+          <buildUnstableMessage></buildUnstableMessage>
+          <buildNotBuiltMessage></buildNotBuiltMessage>
+          <buildUnsuccessfulFilepath></buildUnsuccessfulFilepath>
+          <customUrl></customUrl>
+          <serverName>https://review.gerrithub.io</serverName>
+          <triggerOnEvents>
+            <com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.events.PluginPatchsetCreatedEvent>
+              <excludeDrafts>true</excludeDrafts>
+              <excludeTrivialRebase>true</excludeTrivialRebase>
+              <excludeNoCodeChange>true</excludeNoCodeChange>
+              <excludePrivateState>false</excludePrivateState>
+              <excludeWipState>false</excludeWipState>
+            </com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.events.PluginPatchsetCreatedEvent>
+            <com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.events.PluginCommentAddedContainsEvent>
+              <commentAddedCommentContains>(?i)^(Patch Set [0-9]+:)?( [\w\\+-]*)*(\n\n)?\s*(recheck)$</commentAddedCommentContains>
+            </com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.events.PluginCommentAddedContainsEvent>
+          </triggerOnEvents>
+          <dynamicTriggerConfiguration>false</dynamicTriggerConfiguration>
+          <triggerConfigURL></triggerConfigURL>
+          <triggerInformationAction/>
+        </com.sonyericsson.hudson.plugins.gerrit.trigger.hudsontrigger.GerritTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.75">
+    <script>#!/usr/bin/env groovy
+ 
+import hudson.EnvVars
+import groovy.json.JsonSlurperClassic
+import groovy.json.JsonBuilder
+import groovy.json.JsonOutput
+import java.net.URL
+
+
+def CloneRepo(String relative_target_dir,
+              String gerrit_url,
+              String gerrit_group,
+              String gerrit_project) {
+
+    stage(&apos;Clone repo&apos;) {
+	    checkout([$class: &apos;GitSCM&apos;,
+		branches: [[name: &apos;$GERRIT_BRANCH&apos;]],
+		doGenerateSubmoduleConfigurations: false,
+		extensions: [
+		    [$class: &apos;RelativeTargetDirectory&apos;, relativeTargetDir: &quot;${relative_target_dir}&quot;],
+		    [$class: &apos;BuildChooserSetting&apos;, buildChooser: [$class: &apos;GerritTriggerBuildChooser&apos;]],
+                    [$class: &apos;CleanBeforeCheckout&apos;]
+		],
+		submoduleCfg: [],
+		userRemoteConfigs: [
+		    [name: &apos;origin&apos;,
+		     refspec: &apos;$GERRIT_REFSPEC&apos;,
+		     url: &quot;${gerrit_url}/${gerrit_group}/${gerrit_project}&quot;]
+		    ]
+		]
+	    )
+
+    }
+}
+
+try {
+    node {
+        stage &apos;\u2776 Checkout simulator&apos;
+        //echo &quot;\u2600 BUILD_URL=${env.BUILD_URL}&quot;
+        def workspace = pwd()
+
+        echo &quot;\u2600 workspace=${workspace}&quot;
+        CloneRepo(&quot;./simulator&quot;, &quot;https://review.gerrithub.io&quot;, &quot;davidsaOpenu&quot;, &quot;simulator&quot;)
+
+        // evaluate implicitly creates a class based on the filename specified
+//        evaluate(new File(&quot;${workspace}/simulator/infra/jjb/Clone.groovy&quot;))
+
+        // Safer to use &apos;def&apos; here as Groovy seems fussy about whether
+        // the filename (and therefore implicit class name) has a capital first letter
+//        def tu = new Clone()
+//        tu.myUtilityMethod(&quot;hello world&quot;)
+
+        File sourceFile = new File(&quot;${workspace}/simulator/infra/jjb/Clone.groovy&quot;);
+        Class groovyClass = new GroovyClassLoader(getClass().getClassLoader()).parseClass(sourceFile);
+        GroovyObject myObject = (GroovyObject) groovyClass.newInstance();
+        myObject.myUtilityMethod(&quot;hello world&quot;)
+
+    } // node
+} // try end
+
+catch (e) {
+    currentBuild.result = &quot;FAILURE&quot;
+
+    echo &apos;Err: Incremental Build failed with Error: &apos; + e.toString()
+    echo &apos;     Trying to build with a clean Workspace&apos;
+    throw e
+
+} finally {
+  
+    (currentBuild.result != &quot;ABORTED&quot;) &amp;&amp; node(&quot;master&quot;) {
+        // Send e-mail notifications for failed or unstable builds.
+        // currentBuild.result must be non-null for this step to work.
+    }
+}
+</script>
+    <sandbox>false</sandbox>
+  </definition>
+  <disabled>false</disabled>
+</flow-definition>

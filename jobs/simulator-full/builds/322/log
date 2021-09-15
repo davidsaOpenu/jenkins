@@ -1,0 +1,1245 @@
+Triggered by Gerrit: https://review.gerrithub.io/379770
+Building in workspace /var/lib/jenkins/workspace/simulator-full
+ > git rev-parse --is-inside-work-tree # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://review.gerrithub.io/davidsaOpenu/simulator # timeout=10
+Cleaning workspace
+ > git rev-parse --verify HEAD # timeout=10
+Resetting working tree
+ > git reset --hard # timeout=10
+ > git clean -fdx # timeout=10
+Fetching upstream changes from https://review.gerrithub.io/davidsaOpenu/simulator
+ > git --version # timeout=10
+ > git fetch --tags --progress https://review.gerrithub.io/davidsaOpenu/simulator refs/changes/70/379770/8
+ > git rev-parse 773c7e0c5184c4965c60f5dd355bc56c355c128d^{commit} # timeout=10
+JENKINS-19022: warning: possible memory leak due to Git plugin usage; see: https://wiki.jenkins-ci.org/display/JENKINS/Remove+Git+Plugin+BuildsByBranch+BuildData
+Checking out Revision 773c7e0c5184c4965c60f5dd355bc56c355c128d (refs/changes/70/379770/8)
+Commit message: "Sanity Bug Fixes"
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 773c7e0c5184c4965c60f5dd355bc56c355c128d
+ > git rev-parse FETCH_HEAD^{commit} # timeout=10
+ > git rev-list 4b249b3ea285beb3ada55d68d41f1a6a06a61ba6 # timeout=10
+ > git rev-parse --is-inside-work-tree # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://review.gerrithub.io/davidsaOpenu/simulator-ci # timeout=10
+Cleaning workspace
+ > git rev-parse --verify HEAD # timeout=10
+Resetting working tree
+ > git reset --hard # timeout=10
+ > git clean -fdx # timeout=10
+Fetching upstream changes from https://review.gerrithub.io/davidsaOpenu/simulator-ci
+ > git --version # timeout=10
+ > git fetch --tags --progress https://review.gerrithub.io/davidsaOpenu/simulator-ci +refs/heads/*:refs/remotes/origin/*
+ > git rev-parse origin/master^{commit} # timeout=10
+Checking out Revision 11581f9e1248993465fbd43c9215103308f7606d (origin/master)
+Commit message: "Update prepare.yml"
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 11581f9e1248993465fbd43c9215103308f7606d
+ > git rev-list 11581f9e1248993465fbd43c9215103308f7606d # timeout=10
+ > git rev-parse --is-inside-work-tree # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://review.gerrithub.io/davidsaOpenu/nvme-cli # timeout=10
+Cleaning workspace
+ > git rev-parse --verify HEAD # timeout=10
+Resetting working tree
+ > git reset --hard # timeout=10
+ > git clean -fdx # timeout=10
+Fetching upstream changes from https://review.gerrithub.io/davidsaOpenu/nvme-cli
+ > git --version # timeout=10
+ > git fetch --tags --progress https://review.gerrithub.io/davidsaOpenu/nvme-cli +refs/heads/*:refs/remotes/origin/*
+ > git rev-parse origin/master^{commit} # timeout=10
+Checking out Revision 5adbc520499b31627dd7ff5503333db0ab5de2c3 (origin/master)
+Commit message: "fixning return value of ‘strtoul’ error for older compiler"
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 5adbc520499b31627dd7ff5503333db0ab5de2c3
+ > git rev-list 5adbc520499b31627dd7ff5503333db0ab5de2c3 # timeout=10
+ > git rev-parse --is-inside-work-tree # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://review.gerrithub.io/davidsaOpenu/nvmeCompl # timeout=10
+Cleaning workspace
+ > git rev-parse --verify HEAD # timeout=10
+Resetting working tree
+ > git reset --hard # timeout=10
+ > git clean -fdx # timeout=10
+Fetching upstream changes from https://review.gerrithub.io/davidsaOpenu/nvmeCompl
+ > git --version # timeout=10
+ > git fetch --tags --progress https://review.gerrithub.io/davidsaOpenu/nvmeCompl +refs/heads/*:refs/remotes/origin/*
+ > git rev-parse origin/master^{commit} # timeout=10
+Checking out Revision 5a3e20608a403a6af4ab973fc439cc7198ab6162 (origin/master)
+Commit message: "Adding .gitreview"
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 5a3e20608a403a6af4ab973fc439cc7198ab6162
+ > git rev-list 5a3e20608a403a6af4ab973fc439cc7198ab6162 # timeout=10
+ > git rev-parse --is-inside-work-tree # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://review.gerrithub.io/davidsaOpenu/3.16.2 # timeout=10
+Cleaning workspace
+ > git rev-parse --verify HEAD # timeout=10
+Resetting working tree
+ > git reset --hard # timeout=10
+ > git clean -fdx # timeout=10
+Fetching upstream changes from https://review.gerrithub.io/davidsaOpenu/3.16.2
+ > git --version # timeout=10
+ > git fetch --tags --progress https://review.gerrithub.io/davidsaOpenu/3.16.2 +refs/heads/*:refs/remotes/origin/*
+ > git rev-parse origin/master^{commit} # timeout=10
+Checking out Revision d73108c9692c371bdf5aa72c2fb11099be8ebbfb (origin/master)
+Commit message: "Minimal config - reducing compilation time"
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f d73108c9692c371bdf5aa72c2fb11099be8ebbfb
+ > git rev-list d73108c9692c371bdf5aa72c2fb11099be8ebbfb # timeout=10
+[simulator-full] $ /bin/sh -xe /tmp/hudson3196671082844638330.sh
++ cd /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible
++ set -o pipefail
++ ansible --version
+ansible 2.3.2.0
+  config file = /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/ansible.cfg
+  configured module search path = Default w/o overrides
+  python version = 2.7.6 (default, Oct 26 2016, 20:30:19) [GCC 4.8.4]
++ ansible-playbook -e short_mode=true -i hosts playbooks/run_full_setup.yml -vvvv --extra-vars dest=/var/lib/jenkins/workspace/simulator-full/simulator --extra-vars workspace=/var/lib/jenkins/workspace/simulator-full --extra-vars=@global_vars.yml
+Using /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/ansible.cfg as config file
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/gtest.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/bear.yml
+[DEPRECATION WARNING]: Instead of sudo/sudo_user, use become/become_user and 
+make sure become_method is 'sudo' (default).
+This feature will be removed in a 
+future release. Deprecation warnings can be disabled by setting 
+deprecation_warnings=False in ansible.cfg.
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/libwebsockets.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_stop.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_prepare.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_wait_while_starting.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_stop.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_wait_while_starting.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_stop.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_start.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_wait_while_starting.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_stop.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_prepare.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_wait_while_starting.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_stop.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_wait_while_starting.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_stop.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_start.yml
+statically included: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/guest_tester_pre/tasks/qemu_wait_while_starting.yml
+Loading callback plugin default of type stdout, v2.0 from /usr/lib/python2.7/dist-packages/ansible/plugins/callback/__init__.pyc
+Loading callback plugin unnamed of type old, v1.0 from /usr/lib/python2.7/dist-packages/ansible/plugins/callback/__init__.pyc
+
+PLAYBOOK: run_full_setup.yml ***************************************************
+6 plays in playbooks/run_full_setup.yml
+
+PLAY [configure prerequisites] *************************************************
+2017-10-01T08:51:14.548062 (delta: 0.012794)         elapsed: 0.012794 ******** 
+=============================================================================== 
+
+TASK [Gathering Facts] *********************************************************
+2017-10-01T08:51:14.566049 (delta: 0.017971)         elapsed: 0.030781 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/system/setup.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189 `" && echo ansible-tmp-1506847874.7-22012471455189="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpNIbrMa TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189/setup.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189/setup.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189/setup.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847874.7-22012471455189/" > /dev/null 2>&1 && sleep 0'
+ok: [local_host]
+META: ran handlers
+
+TASK [common : check if CPU supports Intel based KVM] **************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:1
+2017-10-01T08:51:14.876608 (delta: 0.310541)         elapsed: 0.34134 ********* 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/commands/command.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494 `" && echo ansible-tmp-1506847874.93-11505891936494="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpCQqn9R TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494/command.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494/command.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494/command.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847874.93-11505891936494/" > /dev/null 2>&1 && sleep 0'
+changed: [local_host] => {
+    "changed": true, 
+    "cmd": [
+        "egrep", 
+        "-c", 
+        "vmx", 
+        "/proc/cpuinfo"
+    ], 
+    "delta": "0:00:00.001714", 
+    "end": "2017-10-01 11:51:14.986641", 
+    "invocation": {
+        "module_args": {
+            "_raw_params": "egrep -c 'vmx' /proc/cpuinfo", 
+            "_uses_shell": false, 
+            "chdir": null, 
+            "creates": null, 
+            "executable": null, 
+            "removes": null, 
+            "warn": true
+        }
+    }, 
+    "rc": 0, 
+    "start": "2017-10-01 11:51:14.984927", 
+    "stderr": "", 
+    "stderr_lines": [], 
+    "stdout": "8", 
+    "stdout_lines": [
+        "8"
+    ]
+}
+
+cmd: egrep -c vmx /proc/cpuinfo
+
+start: 2017-10-01 11:51:14.984927
+
+end: 2017-10-01 11:51:14.986641
+
+delta: 0:00:00.001714
+
+stdout: 8
+
+changed: True
+
+TASK [common : set fact for Intel based KVM] ***********************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:6
+2017-10-01T08:51:14.997927 (delta: 0.121299)         elapsed: 0.462659 ******** 
+ok: [local_host] => {
+    "ansible_facts": {
+        "kvm_base": "intel"
+    }, 
+    "changed": false
+}
+
+TASK [common : check if CPU supports AMD based KVM] ****************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:11
+2017-10-01T08:51:15.011510 (delta: 0.013564)         elapsed: 0.476242 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/commands/command.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252 `" && echo ansible-tmp-1506847875.02-159201602935252="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpIKSJow TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252/command.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252/command.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252/command.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847875.02-159201602935252/" > /dev/null 2>&1 && sleep 0'
+fatal: [local_host]: FAILED! => {
+    "changed": true, 
+    "cmd": [
+        "egrep", 
+        "-c", 
+        "svm", 
+        "/proc/cpuinfo"
+    ], 
+    "delta": "0:00:01.002018", 
+    "end": "2017-10-01 11:51:16.074321", 
+    "failed": true, 
+    "invocation": {
+        "module_args": {
+            "_raw_params": "egrep -c 'svm' /proc/cpuinfo", 
+            "_uses_shell": false, 
+            "chdir": null, 
+            "creates": null, 
+            "executable": null, 
+            "removes": null, 
+            "warn": true
+        }
+    }, 
+    "rc": 1, 
+    "start": "2017-10-01 11:51:15.072303", 
+    "stderr": "", 
+    "stderr_lines": [], 
+    "stdout": "0", 
+    "stdout_lines": [
+        "0"
+    ]
+}
+...ignoring
+
+cmd: egrep -c svm /proc/cpuinfo
+
+start: 2017-10-01 11:51:15.072303
+
+end: 2017-10-01 11:51:16.074321
+
+delta: 0:00:01.002018
+
+stdout: 0
+
+changed: True
+
+TASK [common : set fact for AMD based KVM] *************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:16
+2017-10-01T08:51:16.086999 (delta: 1.07547)         elapsed: 1.551731 ********* 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : stop execution if cpu does not support KVM extensions] **********
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:21
+2017-10-01T08:51:16.097368 (delta: 0.010341)         elapsed: 1.5621 ********** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : check if host supportes virtualization, using virt-host-validate] ***
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:26
+2017-10-01T08:51:16.107608 (delta: 0.010212)         elapsed: 1.57234 ********* 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/commands/command.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046 `" && echo ansible-tmp-1506847876.12-245712330208046="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpK4Gw36 TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046/command.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046/command.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046/command.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.12-245712330208046/" > /dev/null 2>&1 && sleep 0'
+changed: [local_host] => {
+    "changed": true, 
+    "cmd": [
+        "virt-host-validate"
+    ], 
+    "delta": "0:00:00.003252", 
+    "end": "2017-10-01 11:51:16.170448", 
+    "failed": false, 
+    "failed_when_result": false, 
+    "invocation": {
+        "module_args": {
+            "_raw_params": "virt-host-validate", 
+            "_uses_shell": false, 
+            "chdir": null, 
+            "creates": null, 
+            "executable": null, 
+            "removes": null, 
+            "warn": true
+        }
+    }, 
+    "rc": 1, 
+    "start": "2017-10-01 11:51:16.167196", 
+    "stderr": "", 
+    "stderr_lines": [], 
+    "stdout": "  QEMU: Checking for hardware virtualization                                 : PASS\n  QEMU: Checking for device /dev/kvm                                         : PASS\n  QEMU: Checking for device /dev/vhost-net                                   : WARN (Load the 'vhost_net' module to improve performance of virtio networking)\n  QEMU: Checking for device /dev/net/tun                                     : PASS\n   LXC: Checking for Linux >= 2.6.26                                         : PASS", 
+    "stdout_lines": [
+        "  QEMU: Checking for hardware virtualization                                 : PASS", 
+        "  QEMU: Checking for device /dev/kvm                                         : PASS", 
+        "  QEMU: Checking for device /dev/vhost-net                                   : WARN (Load the 'vhost_net' module to improve performance of virtio networking)", 
+        "  QEMU: Checking for device /dev/net/tun                                     : PASS", 
+        "   LXC: Checking for Linux >= 2.6.26                                         : PASS"
+    ]
+}
+
+cmd: virt-host-validate
+
+start: 2017-10-01 11:51:16.167196
+
+end: 2017-10-01 11:51:16.170448
+
+delta: 0:00:00.003252
+
+stdout:   QEMU: Checking for hardware virtualization                                 : PASS
+  QEMU: Checking for device /dev/kvm                                         : PASS
+  QEMU: Checking for device /dev/vhost-net                                   : WARN (Load the 'vhost_net' module to improve performance of virtio networking)
+  QEMU: Checking for device /dev/net/tun                                     : PASS
+   LXC: Checking for Linux >= 2.6.26                                         : PASS
+
+changed: True
+
+TASK [common : unload KVM module] **********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:40
+2017-10-01T08:51:16.183949 (delta: 0.076312)         elapsed: 1.648681 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/system/modprobe.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708 `" && echo ansible-tmp-1506847876.26-255105483115708="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708 `" ) && sleep 0'
+<localhost> PUT /tmp/tmp7NtYIH TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708/modprobe.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708/modprobe.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708/modprobe.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.26-255105483115708/" > /dev/null 2>&1 && sleep 0'
+fatal: [local_host]: FAILED! => {
+    "changed": false, 
+    "failed": true, 
+    "invocation": {
+        "module_args": {
+            "name": "kvm_intel", 
+            "params": "", 
+            "state": "absent"
+        }
+    }, 
+    "msg": "modprobe: ERROR: ../libkmod/libkmod-module.c:769 kmod_module_remove_module() could not remove 'kvm_intel': Operation not permitted\n", 
+    "name": "kvm_intel", 
+    "params": "", 
+    "state": "absent"
+}
+...ignoring
+
+msg: modprobe: ERROR: ../libkmod/libkmod-module.c:769 kmod_module_remove_module() could not remove 'kvm_intel': Operation not permitted
+
+
+TASK [common : try load KVM module] ********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:46
+2017-10-01T08:51:16.321830 (delta: 0.137862)         elapsed: 1.786562 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/system/modprobe.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114 `" && echo ansible-tmp-1506847876.33-148641140960114="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpccVxjQ TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114/modprobe.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114/modprobe.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114/modprobe.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.33-148641140960114/" > /dev/null 2>&1 && sleep 0'
+ok: [local_host] => {
+    "changed": false, 
+    "failed": false, 
+    "invocation": {
+        "module_args": {
+            "name": "kvm_intel", 
+            "params": "", 
+            "state": "present"
+        }
+    }, 
+    "name": "kvm_intel", 
+    "params": "", 
+    "state": "present"
+}
+
+TASK [common : stop execution if KVM module could not be loaded] ***************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/kvm-vt.yml:53
+2017-10-01T08:51:16.393884 (delta: 0.072034)         elapsed: 1.858616 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : check whether gtest was built] **********************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/gtest.yml:1
+2017-10-01T08:51:16.404034 (delta: 0.010131)         elapsed: 1.868766 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/files/stat.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895 `" && echo ansible-tmp-1506847876.47-58912651400895="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpLIXw5N TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895/stat.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895/stat.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895/stat.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.47-58912651400895/" > /dev/null 2>&1 && sleep 0'
+ok: [local_host] => {
+    "changed": false, 
+    "invocation": {
+        "module_args": {
+            "checksum_algorithm": "sha1", 
+            "follow": false, 
+            "get_attributes": true, 
+            "get_checksum": true, 
+            "get_md5": true, 
+            "get_mime": true, 
+            "path": "/home/jenkins/gtest/lib/libgtest.a"
+        }
+    }, 
+    "stat": {
+        "atime": 1506797059.3717718, 
+        "attr_flags": "e", 
+        "attributes": [
+            "extents"
+        ], 
+        "block_size": 4096, 
+        "blocks": 2416, 
+        "charset": "binary", 
+        "checksum": "79d96efdcdc6ff0e7a959392e4818d2ff7ad0e5e", 
+        "ctime": 1463996576.1288211, 
+        "dev": 2054, 
+        "device_type": 0, 
+        "executable": false, 
+        "exists": true, 
+        "gid": 1003, 
+        "gr_name": "jenkins", 
+        "inode": 3277045, 
+        "isblk": false, 
+        "ischr": false, 
+        "isdir": false, 
+        "isfifo": false, 
+        "isgid": false, 
+        "islnk": false, 
+        "isreg": true, 
+        "issock": false, 
+        "isuid": false, 
+        "md5": "78364d5a77d53f1056cc59a32d89d55c", 
+        "mimetype": "application/x-archive", 
+        "mode": "0644", 
+        "mtime": 1463996576.1288211, 
+        "nlink": 1, 
+        "path": "/home/jenkins/gtest/lib/libgtest.a", 
+        "pw_name": "jenkins", 
+        "readable": true, 
+        "rgrp": true, 
+        "roth": true, 
+        "rusr": true, 
+        "size": 1234562, 
+        "uid": 1003, 
+        "version": "516983962", 
+        "wgrp": false, 
+        "woth": false, 
+        "writeable": true, 
+        "wusr": true, 
+        "xgrp": false, 
+        "xoth": false, 
+        "xusr": false
+    }
+}
+
+TASK [common : get gtest] ******************************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/gtest.yml:5
+2017-10-01T08:51:16.544821 (delta: 0.140767)         elapsed: 2.009553 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : move googletest to gtest] ***************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/gtest.yml:13
+2017-10-01T08:51:16.555422 (delta: 0.010582)         elapsed: 2.020154 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : create gtest/lib] ***********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/gtest.yml:20
+2017-10-01T08:51:16.565465 (delta: 0.010023)         elapsed: 2.030197 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : build gtest] ****************************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/gtest.yml:27
+2017-10-01T08:51:16.575663 (delta: 0.010179)         elapsed: 2.040395 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : check whether bear was built] ***********************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/bear.yml:1
+2017-10-01T08:51:16.586035 (delta: 0.010353)         elapsed: 2.050767 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/files/stat.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307 `" && echo ansible-tmp-1506847876.6-182169010619307="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpooEdn5 TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307/stat.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307/stat.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307/stat.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.6-182169010619307/" > /dev/null 2>&1 && sleep 0'
+ok: [local_host] => {
+    "changed": false, 
+    "invocation": {
+        "module_args": {
+            "checksum_algorithm": "sha1", 
+            "follow": false, 
+            "get_attributes": true, 
+            "get_checksum": true, 
+            "get_md5": true, 
+            "get_mime": true, 
+            "path": "/usr/local/bin/bear"
+        }
+    }, 
+    "stat": {
+        "atime": 1506797059.495772, 
+        "attr_flags": "e", 
+        "attributes": [
+            "extents"
+        ], 
+        "block_size": 4096, 
+        "blocks": 32, 
+        "charset": "utf-8", 
+        "checksum": "958b11e67c81c7408a13f95170159aa2e79e9d74", 
+        "ctime": 1471427386.810071, 
+        "dev": 2054, 
+        "device_type": 0, 
+        "executable": true, 
+        "exists": true, 
+        "gid": 0, 
+        "gr_name": "root", 
+        "inode": 7741290, 
+        "isblk": false, 
+        "ischr": false, 
+        "isdir": false, 
+        "isfifo": false, 
+        "isgid": false, 
+        "islnk": false, 
+        "isreg": true, 
+        "issock": false, 
+        "isuid": false, 
+        "md5": "2bb21dad353651d5aaf99c490a02de53", 
+        "mimetype": "text/x-python", 
+        "mode": "0755", 
+        "mtime": 1471427369.0, 
+        "nlink": 1, 
+        "path": "/usr/local/bin/bear", 
+        "pw_name": "root", 
+        "readable": true, 
+        "rgrp": true, 
+        "roth": true, 
+        "rusr": true, 
+        "size": 13915, 
+        "uid": 0, 
+        "version": "18446744072465638873", 
+        "wgrp": false, 
+        "woth": false, 
+        "writeable": false, 
+        "wusr": true, 
+        "xgrp": true, 
+        "xoth": true, 
+        "xusr": true
+    }
+}
+
+TASK [common : git] ************************************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/bear.yml:5
+2017-10-01T08:51:16.663064 (delta: 0.077009)         elapsed: 2.127796 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : build bear] *****************************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/bear.yml:9
+2017-10-01T08:51:16.674249 (delta: 0.011156)         elapsed: 2.138981 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : check whether libwebsockets was built] **************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/libwebsockets.yml:1
+2017-10-01T08:51:16.684527 (delta: 0.01026)         elapsed: 2.149259 ********* 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/files/stat.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931 `" && echo ansible-tmp-1506847876.69-69887189657931="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpeqKNSW TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931/stat.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931/stat.py && sleep 0'
+<localhost> EXEC /bin/bash -c 'https_proxy=http://proxy.cslab.openu.ac.il:80/ http_proxy=http://proxy.cslab.openu.ac.il:80/ /usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931/stat.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.69-69887189657931/" > /dev/null 2>&1 && sleep 0'
+ok: [local_host] => {
+    "changed": false, 
+    "invocation": {
+        "module_args": {
+            "checksum_algorithm": "sha1", 
+            "follow": false, 
+            "get_attributes": true, 
+            "get_checksum": true, 
+            "get_md5": true, 
+            "get_mime": true, 
+            "path": "/home/jenkins/libwebsockets/lib/libwebsockets.a"
+        }
+    }, 
+    "stat": {
+        "atime": 1506797059.5997717, 
+        "attr_flags": "e", 
+        "attributes": [
+            "extents"
+        ], 
+        "block_size": 4096, 
+        "blocks": 592, 
+        "charset": "binary", 
+        "checksum": "ba95827bb1ebf0353d6dc42760040b53f71e0f64", 
+        "ctime": 1503473172.009926, 
+        "dev": 2054, 
+        "device_type": 0, 
+        "executable": false, 
+        "exists": true, 
+        "gid": 1003, 
+        "gr_name": "jenkins", 
+        "inode": 3673818, 
+        "isblk": false, 
+        "ischr": false, 
+        "isdir": false, 
+        "isfifo": false, 
+        "isgid": false, 
+        "islnk": false, 
+        "isreg": true, 
+        "issock": false, 
+        "isuid": false, 
+        "md5": "f9be255ece338d9cd07ab02bac8c6d9f", 
+        "mimetype": "application/x-archive", 
+        "mode": "0644", 
+        "mtime": 1503473172.009926, 
+        "nlink": 1, 
+        "path": "/home/jenkins/libwebsockets/lib/libwebsockets.a", 
+        "pw_name": "jenkins", 
+        "readable": true, 
+        "rgrp": true, 
+        "roth": true, 
+        "rusr": true, 
+        "size": 299536, 
+        "uid": 1003, 
+        "version": "2138236664", 
+        "wgrp": false, 
+        "woth": false, 
+        "writeable": true, 
+        "wusr": true, 
+        "xgrp": false, 
+        "xoth": false, 
+        "xusr": false
+    }
+}
+
+TASK [common : get libwebsockets] **********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/libwebsockets.yml:5
+2017-10-01T08:51:16.762600 (delta: 0.078053)         elapsed: 2.227332 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : move to the right folder] ***************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/libwebsockets.yml:13
+2017-10-01T08:51:16.773075 (delta: 0.010456)         elapsed: 2.237807 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [common : build libwebsockets] ********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/common/tasks/libwebsockets.yml:20
+2017-10-01T08:51:16.783550 (delta: 0.010456)         elapsed: 2.248282 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+META: ran handlers
+META: ran handlers
+
+PLAY [perform host tests] ******************************************************
+2017-10-01T08:51:16.795283 (delta: 0.011714)         elapsed: 2.260015 ******** 
+=============================================================================== 
+
+TASK [Gathering Facts] *********************************************************
+2017-10-01T08:51:16.799593 (delta: 0.004289)         elapsed: 2.264325 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/system/setup.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948 `" && echo ansible-tmp-1506847876.81-223915409363948="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpDzrxW2 TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948/setup.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948/setup.py && sleep 0'
+<localhost> EXEC /bin/bash -c '/usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948/setup.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847876.81-223915409363948/" > /dev/null 2>&1 && sleep 0'
+ok: [local_host]
+META: ran handlers
+
+TASK [simulator : create data directory] ***************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml:1
+2017-10-01T08:51:16.984506 (delta: 0.184901)         elapsed: 2.449238 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/files/file.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503 `" && echo ansible-tmp-1506847877.06-109769144036503="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpnVnXGT TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503/file.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503/file.py && sleep 0'
+<localhost> EXEC /bin/bash -c '/usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503/file.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847877.06-109769144036503/" > /dev/null 2>&1 && sleep 0'
+changed: [local_host] => {
+    "changed": true, 
+    "diff": {
+        "after": {
+            "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data", 
+            "state": "directory"
+        }, 
+        "before": {
+            "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data", 
+            "state": "absent"
+        }
+    }, 
+    "gid": 1003, 
+    "group": "jenkins", 
+    "invocation": {
+        "module_args": {
+            "attributes": null, 
+            "backup": null, 
+            "content": null, 
+            "delimiter": null, 
+            "diff_peek": null, 
+            "directory_mode": null, 
+            "follow": false, 
+            "force": false, 
+            "group": null, 
+            "mode": null, 
+            "original_basename": null, 
+            "owner": null, 
+            "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data", 
+            "recurse": false, 
+            "regexp": null, 
+            "remote_src": null, 
+            "selevel": null, 
+            "serole": null, 
+            "setype": null, 
+            "seuser": null, 
+            "src": null, 
+            "state": "directory", 
+            "unsafe_writes": null, 
+            "validate": null
+        }
+    }, 
+    "mode": "0755", 
+    "owner": "jenkins", 
+    "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data", 
+    "size": 4096, 
+    "state": "directory", 
+    "uid": 1003
+}
+
+changed: True
+
+TASK [simulator : create SSD configuration file into eVSSIM/tests/host/data] ***
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml:7
+2017-10-01T08:51:17.122857 (delta: 0.138332)         elapsed: 2.587589 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/files/file.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450 `" && echo ansible-tmp-1506847877.13-45590771769450="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450 `" ) && sleep 0'
+<localhost> PUT /tmp/tmp8iyVbC TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450/file.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450/file.py && sleep 0'
+<localhost> EXEC /bin/bash -c '/usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450/file.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847877.13-45590771769450/" > /dev/null 2>&1 && sleep 0'
+changed: [local_host] => {
+    "changed": true, 
+    "dest": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data/ssd.conf", 
+    "diff": {
+        "after": {
+            "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data/ssd.conf", 
+            "state": "touch"
+        }, 
+        "before": {
+            "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data/ssd.conf", 
+            "state": "absent"
+        }
+    }, 
+    "gid": 1003, 
+    "group": "jenkins", 
+    "invocation": {
+        "module_args": {
+            "attributes": null, 
+            "backup": null, 
+            "content": null, 
+            "delimiter": null, 
+            "diff_peek": null, 
+            "directory_mode": null, 
+            "follow": false, 
+            "force": false, 
+            "group": null, 
+            "mode": null, 
+            "original_basename": null, 
+            "owner": null, 
+            "path": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host/data/ssd.conf", 
+            "recurse": false, 
+            "regexp": null, 
+            "remote_src": null, 
+            "selevel": null, 
+            "serole": null, 
+            "setype": null, 
+            "seuser": null, 
+            "src": null, 
+            "state": "touch", 
+            "unsafe_writes": null, 
+            "validate": null
+        }
+    }, 
+    "mode": "0644", 
+    "owner": "jenkins", 
+    "size": 0, 
+    "state": "file", 
+    "uid": 1003
+}
+
+changed: True
+
+TASK [simulator : build ssd_monitor] *******************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml:10
+2017-10-01T08:51:17.196130 (delta: 0.073254)         elapsed: 2.660862 ******** 
+skipping: [local_host] => {
+    "changed": false, 
+    "skip_reason": "Conditional result was False", 
+    "skipped": true
+}
+
+TASK [simulator : compile osc-osd] *********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/simulator/tasks/prepare_simulator.yml:16
+2017-10-01T08:51:17.203711 (delta: 0.007562)         elapsed: 2.668443 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/commands/command.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759 `" && echo ansible-tmp-1506847877.21-173952664884759="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759 `" ) && sleep 0'
+<localhost> PUT /tmp/tmpEnwgJO TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759/command.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759/command.py && sleep 0'
+<localhost> EXEC /bin/bash -c '/usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759/command.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847877.21-173952664884759/" > /dev/null 2>&1 && sleep 0'
+changed: [local_host] => {
+    "changed": true, 
+    "cmd": "make target_clean && make target", 
+    "delta": "0:00:00.644404", 
+    "end": "2017-10-01 11:51:17.908054", 
+    "invocation": {
+        "module_args": {
+            "_raw_params": "make target_clean && make target", 
+            "_uses_shell": true, 
+            "chdir": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd", 
+            "creates": null, 
+            "executable": null, 
+            "removes": null, 
+            "warn": true
+        }
+    }, 
+    "rc": 0, 
+    "start": "2017-10-01 11:51:17.263650", 
+    "stderr": "osd.c:94:1: warning: initialization discards ‘const’ qualifier from pointer target type [enabled by default]\n static char * const argv[] = { \"osd-target\", NULL };\n ^\nmtq.c: In function ‘mtq_run_query’:\nmtq.c:97:2: warning: format not a string literal and no format arguments [-Wformat-security]\n  sprintf(cp, select_stmt);\n  ^", 
+    "stderr_lines": [
+        "osd.c:94:1: warning: initialization discards ‘const’ qualifier from pointer target type [enabled by default]", 
+        " static char * const argv[] = { \"osd-target\", NULL };", 
+        " ^", 
+        "mtq.c: In function ‘mtq_run_query’:", 
+        "mtq.c:97:2: warning: format not a string literal and no format arguments [-Wformat-security]", 
+        "  sprintf(cp, select_stmt);", 
+        "  ^"
+    ], 
+    "stdout": "make -C .//osd-target clean\nmake[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'\nrm -f tgtd libosdtgt.a attr.o db.o obj.o osd-schema.o osd.o cdb.o osd-sense.o list-entry.o osd-schema.o coll.o mtq.o .depend osd-schema.c\nmake[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'\nmake -C .//osd-util\nmake[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'\nmake[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'\nmake[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'\ngcc -g -fPIC -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I. -c osd-util.c -o osd-util.o\nar cr libosdutil.a osd-util.o\nmake[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'\nmake -C .//osd-target\nmake[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'\nmake[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'\nmake[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c attr.c -o attr.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c db.c -o db.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c obj.c -o obj.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd-schema.c -o osd-schema.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd.c -o osd.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c cdb.c -o cdb.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd-sense.c -o osd-sense.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c list-entry.c -o list-entry.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c coll.c -o coll.o\ngcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c mtq.c -o mtq.o\nar cr libosdtgt.a attr.o db.o obj.o osd-schema.o osd.o cdb.o osd-sense.o list-entry.o coll.o mtq.o\nmake[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'", 
+    "stdout_lines": [
+        "make -C .//osd-target clean", 
+        "make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'", 
+        "rm -f tgtd libosdtgt.a attr.o db.o obj.o osd-schema.o osd.o cdb.o osd-sense.o list-entry.o osd-schema.o coll.o mtq.o .depend osd-schema.c", 
+        "make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'", 
+        "make -C .//osd-util", 
+        "make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'", 
+        "make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'", 
+        "make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'", 
+        "gcc -g -fPIC -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I. -c osd-util.c -o osd-util.o", 
+        "ar cr libosdutil.a osd-util.o", 
+        "make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'", 
+        "make -C .//osd-target", 
+        "make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'", 
+        "make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'", 
+        "make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c attr.c -o attr.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c db.c -o db.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c obj.c -o obj.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd-schema.c -o osd-schema.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd.c -o osd.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c cdb.c -o cdb.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd-sense.c -o osd-sense.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c list-entry.c -o list-entry.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c coll.c -o coll.o", 
+        "gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c mtq.c -o mtq.o", 
+        "ar cr libosdtgt.a attr.o db.o obj.o osd-schema.o osd.o cdb.o osd-sense.o list-entry.o coll.o mtq.o", 
+        "make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'"
+    ]
+}
+
+cmd: make target_clean && make target
+
+start: 2017-10-01 11:51:17.263650
+
+end: 2017-10-01 11:51:17.908054
+
+delta: 0:00:00.644404
+
+stdout: make -C .//osd-target clean
+make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'
+rm -f tgtd libosdtgt.a attr.o db.o obj.o osd-schema.o osd.o cdb.o osd-sense.o list-entry.o osd-schema.o coll.o mtq.o .depend osd-schema.c
+make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'
+make -C .//osd-util
+make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'
+make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'
+make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'
+gcc -g -fPIC -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I. -c osd-util.c -o osd-util.o
+ar cr libosdutil.a osd-util.o
+make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-util'
+make -C .//osd-target
+make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'
+make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'
+make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c attr.c -o attr.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c db.c -o db.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c obj.c -o obj.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd-schema.c -o osd-schema.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd.c -o osd.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c cdb.c -o cdb.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c osd-sense.c -o osd-sense.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c list-entry.c -o list-entry.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c coll.c -o coll.o
+gcc -g -fPIC -foptimize-sibling-calls -D_GNU_SOURCE -Wall -W -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -Wbad-function-cast -Wundef -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -I.. -Wno-unused -I../osd-util -c mtq.c -o mtq.o
+ar cr libosdtgt.a attr.o db.o obj.o osd-schema.o osd.o cdb.o osd-sense.o list-entry.o coll.o mtq.o
+make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/osc-osd/osd-target'
+
+stderr: osd.c:94:1: warning: initialization discards ?const? qualifier from pointer target type [enabled by default]
+ static char * const argv[] = { "osd-target", NULL };
+ ^
+mtq.c: In function ?mtq_run_query?:
+mtq.c:97:2: warning: format not a string literal and no format arguments [-Wformat-security]
+  sprintf(cp, select_stmt);
+  ^
+
+changed: True
+
+TASK [host_tester : build host tests] ******************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/host_tester/tasks/main.yml:1
+2017-10-01T08:51:17.920723 (delta: 0.716996)         elapsed: 3.385455 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/commands/command.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312 `" && echo ansible-tmp-1506847877.93-24828110945312="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312 `" ) && sleep 0'
+<localhost> PUT /tmp/tmp4fX60Z TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312/command.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312/command.py && sleep 0'
+<localhost> EXEC /bin/bash -c '/usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312/command.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847877.93-24828110945312/" > /dev/null 2>&1 && sleep 0'
+changed: [local_host] => {
+    "changed": true, 
+    "cmd": "make distclean && make mklink && bear make", 
+    "delta": "0:00:05.103103", 
+    "end": "2017-10-01 11:51:23.083817", 
+    "invocation": {
+        "module_args": {
+            "_raw_params": "make distclean && make mklink && bear make", 
+            "_uses_shell": true, 
+            "chdir": "/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/tests/host", 
+            "creates": null, 
+            "executable": null, 
+            "removes": null, 
+            "warn": true
+        }
+    }, 
+    "rc": 0, 
+    "start": "2017-10-01 11:51:17.980714", 
+    "stderr": "ftl_perf_manager.c: In function ‘UPDATE_IO_REQUEST’:\nftl_perf_manager.c:353:6: warning: variable ‘flag’ set but not used [-Wunused-but-set-variable]\n  int flag = 0;\n      ^\nssd_io_manager.c: In function ‘SSD_CH_ENABLE’:\nssd_io_manager.c:259:10: warning: variable ‘do_delay’ set but not used [-Wunused-but-set-variable]\n  int64_t do_delay = 0;\n          ^\nssd_io_manager.c: In function ‘SSD_BLOCK_ERASE_DELAY’:\nssd_io_manager.c:622:10: warning: variable ‘end’ set but not used [-Wunused-but-set-variable]\n  int64_t end = 0;\n          ^\nssd_io_manager.c:621:10: warning: variable ‘start’ set but not used [-Wunused-but-set-variable]\n  int64_t start = 0;\n          ^\nIn file included from form1.cpp:20:0:\n/usr/include/qt3/qimage.h: In member function ‘bool QImageTextKeyLang::operator<(const QImageTextKeyLang&) const’:\n/usr/include/qt3/qimage.h:61:45: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]\n  { return key < other.key || key==other.key && lang < other.lang; }\n                                             ^", 
+    "stderr_lines": [
+        "ftl_perf_manager.c: In function ‘UPDATE_IO_REQUEST’:", 
+        "ftl_perf_manager.c:353:6: warning: variable ‘flag’ set but not used [-Wunused-but-set-variable]", 
+        "  int flag = 0;", 
+        "      ^", 
+        "ssd_io_manager.c: In function ‘SSD_CH_ENABLE’:", 
+        "ssd_io_manager.c:259:10: warning: variable ‘do_delay’ set but not used [-Wunused-but-set-variable]", 
+        "  int64_t do_delay = 0;", 
+        "          ^", 
+        "ssd_io_manager.c: In function ‘SSD_BLOCK_ERASE_DELAY’:", 
+        "ssd_io_manager.c:622:10: warning: variable ‘end’ set but not used [-Wunused-but-set-variable]", 
+        "  int64_t end = 0;", 
+        "          ^", 
+        "ssd_io_manager.c:621:10: warning: variable ‘start’ set but not used [-Wunused-but-set-variable]", 
+        "  int64_t start = 0;", 
+        "          ^", 
+        "In file included from form1.cpp:20:0:", 
+        "/usr/include/qt3/qimage.h: In member function ‘bool QImageTextKeyLang::operator<(const QImageTextKeyLang&) const’:", 
+        "/usr/include/qt3/qimage.h:61:45: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]", 
+        "  { return key < other.key || key==other.key && lang < other.lang; }", 
+        "                                             ^"
+    ], 
+    "stdout": "rm -f object_tests sector_tests log_mgr_tests object_tests.o sector_tests.o log_mgr_tests.o rt_analyzer_subscriber.o log_manager_subscriber.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o data/*\nrm -rf   ssd_io_manager.h ssd_io_manager.c ssd_log_manager.h ssd_log_manager.c ssd_util.h \\\n\t\tcommon.h ftl.h ftl.c ftl_sect_strategy.h ftl_sect_strategy.c ftl_obj_strategy.h \\\n\t\tftl_obj_strategy.c ftl_type.h ftl_gc_manager.h ftl_gc_manager.c ftl_inverse_mapping_manager.h \\\n\t\tftl_inverse_mapping_manager.c ftl_mapping_manager.h ftl_mapping_manager.c ftl_perf_manager.h \\\n        ftl_perf_manager.c vssim_config_manager.h vssim_config_manager.c ssd_monitor uthash.h \\\n        logging_parser.h logging_parser.c logging_backend.h logging_backend.c \\\n        logging_rt_analyzer.h logging_rt_analyzer.c monitor_test.h logging_manager.h logging_manager.c \\\n        logging_server.h logging_server.c www logging_statistics.c logging_statistics.h\nln -sf ../../SSD_MODULE/ssd_io_manager.h\nln -sf ../../SSD_MODULE/ssd_io_manager.c\nln -sf ../../SSD_MODULE/ssd_log_manager.h\nln -sf ../../SSD_MODULE/ssd_log_manager.c\nln -sf ../../SSD_MODULE/ssd_util.h\nln -sf ../../LOG_MGR/logging_rt_analyzer.h\nln -sf ../../LOG_MGR/logging_rt_analyzer.c\nln -sf ../../LOG_MGR/logging_parser.h\nln -sf ../../LOG_MGR/logging_parser.c\nln -sf ../../LOG_MGR/logging_manager.h\nln -sf ../../LOG_MGR/logging_manager.c\nln -sf ../../LOG_MGR/logging_backend.h\nln -sf ../../LOG_MGR/logging_backend.c\nln -sf ../../LOG_MGR/logging_statistics.h\nln -sf ../../LOG_MGR/logging_statistics.c\nln -sf ../../FTL_SOURCE/COMMON/common.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl.c\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_sect_strategy.c\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_sect_strategy.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_obj_strategy.c\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_obj_strategy.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_type.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_gc_manager.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_gc_manager.c\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_inverse_mapping_manager.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_inverse_mapping_manager.c\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_mapping_manager.h\nln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_mapping_manager.c\nln -sf ../../FTL_SOURCE/PAGE_MAP/TOOLS/uthash.h\nln -sf ../../FTL_SOURCE/PERF_MODULE/ftl_perf_manager.h\nln -sf ../../FTL_SOURCE/PERF_MODULE/ftl_perf_manager.c\nln -sf ../../CONFIG/vssim_config_manager.h\nln -sf ../../CONFIG/vssim_config_manager.c\nln -sf ../../MONITOR/SSD_MONITOR_PM/ssd_monitor_p ssd_monitor\nln -sf ../../MONITOR/SSD_MONITOR_PM/monitor_test.h\nln -sf ../../MONITOR/SERVER/logging_server.h\nln -sf ../../MONITOR/SERVER/logging_server.c\nln -sf ../../MONITOR/SERVER/www\ntouch ssd.conf\ng++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c sector_tests.cc\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c vssim_config_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_mapping_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_inverse_mapping_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_gc_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_perf_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ssd_log_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ssd_io_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_sect_strategy.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_obj_strategy.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_backend.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_parser.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_rt_analyzer.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_manager.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_server.c\ngcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_statistics.c\ng++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o sector_tests sector_tests.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o -lpthread -lgtest -lgtest_main -losdutil -losdtgt -lsqlite3 -lwebsockets\ng++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c object_tests.cc\ng++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o object_tests object_tests.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o -Wl,-Bstatic -L../../osc-osd/osd-util -L../../osc-osd/osd-target -losdutil -losdtgt -Wl,-Bdynamic -lsqlite3 -lm -lpthread -lgtest -lgtest_main -lwebsockets\ng++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c log_mgr_tests.cc\ng++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c rt_analyzer_subscriber.cc\ng++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c log_manager_subscriber.cc\ncd ../../MONITOR/SSD_MONITOR_PM && qmake -o Makefile ssd_monitor_p.pro && make\nmake[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/MONITOR/SSD_MONITOR_PM'\n/usr/share/qt3/bin/uic form1.ui -o form1.h\ng++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o main.o main.cpp\ng++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o monitor_test.o monitor_test.cpp\n/usr/share/qt3/bin/uic form1.ui -i form1.h -o form1.cpp\ng++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o form1.o form1.cpp\n/usr/share/qt3/bin/moc form1.h -o moc_form1.cpp\ng++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o moc_form1.o moc_form1.cpp\ng++  -o ssd_monitor_p main.o monitor_test.o form1.o moc_form1.o   -L/usr/share/qt3/lib -L/usr/X11R6/lib -lqt-mt -lXext -lX11 -lm -lpthread\nmake[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/MONITOR/SSD_MONITOR_PM'\ng++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o log_mgr_tests log_mgr_tests.o rt_analyzer_subscriber.o log_manager_subscriber.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o ../../MONITOR/SSD_MONITOR_PM/monitor_test.o ../../MONITOR/SSD_MONITOR_PM/form1.o ../../MONITOR/SSD_MONITOR_PM/moc_form1.o -L/usr/share/qt3/lib -L/usr/X11R6/lib -lqt-mt -lXext -lX11 -lm -lpthread -lgtest -lgtest_main -losdutil -losdtgt -lsqlite3 -lwebsockets", 
+    "stdout_lines": [
+        "rm -f object_tests sector_tests log_mgr_tests object_tests.o sector_tests.o log_mgr_tests.o rt_analyzer_subscriber.o log_manager_subscriber.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o data/*", 
+        "rm -rf   ssd_io_manager.h ssd_io_manager.c ssd_log_manager.h ssd_log_manager.c ssd_util.h \\", 
+        "\t\tcommon.h ftl.h ftl.c ftl_sect_strategy.h ftl_sect_strategy.c ftl_obj_strategy.h \\", 
+        "\t\tftl_obj_strategy.c ftl_type.h ftl_gc_manager.h ftl_gc_manager.c ftl_inverse_mapping_manager.h \\", 
+        "\t\tftl_inverse_mapping_manager.c ftl_mapping_manager.h ftl_mapping_manager.c ftl_perf_manager.h \\", 
+        "        ftl_perf_manager.c vssim_config_manager.h vssim_config_manager.c ssd_monitor uthash.h \\", 
+        "        logging_parser.h logging_parser.c logging_backend.h logging_backend.c \\", 
+        "        logging_rt_analyzer.h logging_rt_analyzer.c monitor_test.h logging_manager.h logging_manager.c \\", 
+        "        logging_server.h logging_server.c www logging_statistics.c logging_statistics.h", 
+        "ln -sf ../../SSD_MODULE/ssd_io_manager.h", 
+        "ln -sf ../../SSD_MODULE/ssd_io_manager.c", 
+        "ln -sf ../../SSD_MODULE/ssd_log_manager.h", 
+        "ln -sf ../../SSD_MODULE/ssd_log_manager.c", 
+        "ln -sf ../../SSD_MODULE/ssd_util.h", 
+        "ln -sf ../../LOG_MGR/logging_rt_analyzer.h", 
+        "ln -sf ../../LOG_MGR/logging_rt_analyzer.c", 
+        "ln -sf ../../LOG_MGR/logging_parser.h", 
+        "ln -sf ../../LOG_MGR/logging_parser.c", 
+        "ln -sf ../../LOG_MGR/logging_manager.h", 
+        "ln -sf ../../LOG_MGR/logging_manager.c", 
+        "ln -sf ../../LOG_MGR/logging_backend.h", 
+        "ln -sf ../../LOG_MGR/logging_backend.c", 
+        "ln -sf ../../LOG_MGR/logging_statistics.h", 
+        "ln -sf ../../LOG_MGR/logging_statistics.c", 
+        "ln -sf ../../FTL_SOURCE/COMMON/common.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl.c", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_sect_strategy.c", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_sect_strategy.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_obj_strategy.c", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_obj_strategy.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_type.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_gc_manager.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_gc_manager.c", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_inverse_mapping_manager.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_inverse_mapping_manager.c", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_mapping_manager.h", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_mapping_manager.c", 
+        "ln -sf ../../FTL_SOURCE/PAGE_MAP/TOOLS/uthash.h", 
+        "ln -sf ../../FTL_SOURCE/PERF_MODULE/ftl_perf_manager.h", 
+        "ln -sf ../../FTL_SOURCE/PERF_MODULE/ftl_perf_manager.c", 
+        "ln -sf ../../CONFIG/vssim_config_manager.h", 
+        "ln -sf ../../CONFIG/vssim_config_manager.c", 
+        "ln -sf ../../MONITOR/SSD_MONITOR_PM/ssd_monitor_p ssd_monitor", 
+        "ln -sf ../../MONITOR/SSD_MONITOR_PM/monitor_test.h", 
+        "ln -sf ../../MONITOR/SERVER/logging_server.h", 
+        "ln -sf ../../MONITOR/SERVER/logging_server.c", 
+        "ln -sf ../../MONITOR/SERVER/www", 
+        "touch ssd.conf", 
+        "g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c sector_tests.cc", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c vssim_config_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_mapping_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_inverse_mapping_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_gc_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_perf_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ssd_log_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ssd_io_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_sect_strategy.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_obj_strategy.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_backend.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_parser.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_rt_analyzer.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_manager.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_server.c", 
+        "gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_statistics.c", 
+        "g++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o sector_tests sector_tests.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o -lpthread -lgtest -lgtest_main -losdutil -losdtgt -lsqlite3 -lwebsockets", 
+        "g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c object_tests.cc", 
+        "g++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o object_tests object_tests.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o -Wl,-Bstatic -L../../osc-osd/osd-util -L../../osc-osd/osd-target -losdutil -losdtgt -Wl,-Bdynamic -lsqlite3 -lm -lpthread -lgtest -lgtest_main -lwebsockets", 
+        "g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c log_mgr_tests.cc", 
+        "g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c rt_analyzer_subscriber.cc", 
+        "g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c log_manager_subscriber.cc", 
+        "cd ../../MONITOR/SSD_MONITOR_PM && qmake -o Makefile ssd_monitor_p.pro && make", 
+        "make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/MONITOR/SSD_MONITOR_PM'", 
+        "/usr/share/qt3/bin/uic form1.ui -o form1.h", 
+        "g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o main.o main.cpp", 
+        "g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o monitor_test.o monitor_test.cpp", 
+        "/usr/share/qt3/bin/uic form1.ui -i form1.h -o form1.cpp", 
+        "g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o form1.o form1.cpp", 
+        "/usr/share/qt3/bin/moc form1.h -o moc_form1.cpp", 
+        "g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o moc_form1.o moc_form1.cpp", 
+        "g++  -o ssd_monitor_p main.o monitor_test.o form1.o moc_form1.o   -L/usr/share/qt3/lib -L/usr/X11R6/lib -lqt-mt -lXext -lX11 -lm -lpthread", 
+        "make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/MONITOR/SSD_MONITOR_PM'", 
+        "g++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o log_mgr_tests log_mgr_tests.o rt_analyzer_subscriber.o log_manager_subscriber.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o ../../MONITOR/SSD_MONITOR_PM/monitor_test.o ../../MONITOR/SSD_MONITOR_PM/form1.o ../../MONITOR/SSD_MONITOR_PM/moc_form1.o -L/usr/share/qt3/lib -L/usr/X11R6/lib -lqt-mt -lXext -lX11 -lm -lpthread -lgtest -lgtest_main -losdutil -losdtgt -lsqlite3 -lwebsockets"
+    ]
+}
+
+cmd: make distclean && make mklink && bear make
+
+start: 2017-10-01 11:51:17.980714
+
+end: 2017-10-01 11:51:23.083817
+
+delta: 0:00:05.103103
+
+stdout: rm -f object_tests sector_tests log_mgr_tests object_tests.o sector_tests.o log_mgr_tests.o rt_analyzer_subscriber.o log_manager_subscriber.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o data/*
+rm -rf   ssd_io_manager.h ssd_io_manager.c ssd_log_manager.h ssd_log_manager.c ssd_util.h \
+		common.h ftl.h ftl.c ftl_sect_strategy.h ftl_sect_strategy.c ftl_obj_strategy.h \
+		ftl_obj_strategy.c ftl_type.h ftl_gc_manager.h ftl_gc_manager.c ftl_inverse_mapping_manager.h \
+		ftl_inverse_mapping_manager.c ftl_mapping_manager.h ftl_mapping_manager.c ftl_perf_manager.h \
+        ftl_perf_manager.c vssim_config_manager.h vssim_config_manager.c ssd_monitor uthash.h \
+        logging_parser.h logging_parser.c logging_backend.h logging_backend.c \
+        logging_rt_analyzer.h logging_rt_analyzer.c monitor_test.h logging_manager.h logging_manager.c \
+        logging_server.h logging_server.c www logging_statistics.c logging_statistics.h
+ln -sf ../../SSD_MODULE/ssd_io_manager.h
+ln -sf ../../SSD_MODULE/ssd_io_manager.c
+ln -sf ../../SSD_MODULE/ssd_log_manager.h
+ln -sf ../../SSD_MODULE/ssd_log_manager.c
+ln -sf ../../SSD_MODULE/ssd_util.h
+ln -sf ../../LOG_MGR/logging_rt_analyzer.h
+ln -sf ../../LOG_MGR/logging_rt_analyzer.c
+ln -sf ../../LOG_MGR/logging_parser.h
+ln -sf ../../LOG_MGR/logging_parser.c
+ln -sf ../../LOG_MGR/logging_manager.h
+ln -sf ../../LOG_MGR/logging_manager.c
+ln -sf ../../LOG_MGR/logging_backend.h
+ln -sf ../../LOG_MGR/logging_backend.c
+ln -sf ../../LOG_MGR/logging_statistics.h
+ln -sf ../../LOG_MGR/logging_statistics.c
+ln -sf ../../FTL_SOURCE/COMMON/common.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl.c
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_sect_strategy.c
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_sect_strategy.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_obj_strategy.c
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_obj_strategy.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_type.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_gc_manager.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_gc_manager.c
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_inverse_mapping_manager.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_inverse_mapping_manager.c
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_mapping_manager.h
+ln -sf ../../FTL_SOURCE/PAGE_MAP/ftl_mapping_manager.c
+ln -sf ../../FTL_SOURCE/PAGE_MAP/TOOLS/uthash.h
+ln -sf ../../FTL_SOURCE/PERF_MODULE/ftl_perf_manager.h
+ln -sf ../../FTL_SOURCE/PERF_MODULE/ftl_perf_manager.c
+ln -sf ../../CONFIG/vssim_config_manager.h
+ln -sf ../../CONFIG/vssim_config_manager.c
+ln -sf ../../MONITOR/SSD_MONITOR_PM/ssd_monitor_p ssd_monitor
+ln -sf ../../MONITOR/SSD_MONITOR_PM/monitor_test.h
+ln -sf ../../MONITOR/SERVER/logging_server.h
+ln -sf ../../MONITOR/SERVER/logging_server.c
+ln -sf ../../MONITOR/SERVER/www
+touch ssd.conf
+g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c sector_tests.cc
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c vssim_config_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_mapping_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_inverse_mapping_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_gc_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_perf_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ssd_log_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ssd_io_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_sect_strategy.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c ftl_obj_strategy.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_backend.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_parser.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_rt_analyzer.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_manager.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_server.c
+gcc -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c logging_statistics.c
+g++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o sector_tests sector_tests.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o -lpthread -lgtest -lgtest_main -losdutil -losdtgt -lsqlite3 -lwebsockets
+g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c object_tests.cc
+g++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o object_tests object_tests.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o -Wl,-Bstatic -L../../osc-osd/osd-util -L../../osc-osd/osd-target -losdutil -losdtgt -Wl,-Bdynamic -lsqlite3 -lm -lpthread -lgtest -lgtest_main -lwebsockets
+g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c log_mgr_tests.cc
+g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c rt_analyzer_subscriber.cc
+g++ -Wall -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -c log_manager_subscriber.cc
+cd ../../MONITOR/SSD_MONITOR_PM && qmake -o Makefile ssd_monitor_p.pro && make
+make[1]: Entering directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/MONITOR/SSD_MONITOR_PM'
+/usr/share/qt3/bin/uic form1.ui -o form1.h
+g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o main.o main.cpp
+g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o monitor_test.o monitor_test.cpp
+/usr/share/qt3/bin/uic form1.ui -i form1.h -o form1.cpp
+g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o form1.o form1.cpp
+/usr/share/qt3/bin/moc form1.h -o moc_form1.cpp
+g++ -c -pipe -g -Wall -W -O2 -D_REENTRANT  -DQT_NO_DEBUG -DQT_THREAD_SUPPORT -DQT_SHARED -DQT_TABLET_SUPPORT -I/usr/share/qt3/mkspecs/default -I. -I. -I/usr/include/qt3 -o moc_form1.o moc_form1.cpp
+g++  -o ssd_monitor_p main.o monitor_test.o form1.o moc_form1.o   -L/usr/share/qt3/lib -L/usr/X11R6/lib -lqt-mt -lXext -lX11 -lm -lpthread
+make[1]: Leaving directory `/var/lib/jenkins/workspace/simulator-full/simulator/eVSSIM/MONITOR/SSD_MONITOR_PM'
+g++ -I/opt/gtest/include -I../../osc-osd -I../../osc-osd/osd-target -I../../QEMU -g -DGTEST -DCOMPLIANCE_TESTS -L/opt/gtest/lib -L../../osc-osd/osd-util -L../../osc-osd/osd-target -I/opt/libwebsockets/include -L/opt/libwebsockets/lib -Wl,-R/opt/libwebsockets/lib -Wall -o log_mgr_tests log_mgr_tests.o rt_analyzer_subscriber.o log_manager_subscriber.o vssim_config_manager.o ftl.o ftl_mapping_manager.o ftl_inverse_mapping_manager.o ftl_gc_manager.o ftl_perf_manager.o ssd_log_manager.o ssd_io_manager.o ftl_sect_strategy.o ftl_obj_strategy.o logging_backend.o logging_parser.o logging_rt_analyzer.o logging_manager.o logging_server.o logging_statistics.o ../../MONITOR/SSD_MONITOR_PM/monitor_test.o ../../MONITOR/SSD_MONITOR_PM/form1.o ../../MONITOR/SSD_MONITOR_PM/moc_form1.o -L/usr/share/qt3/lib -L/usr/X11R6/lib -lqt-mt -lXext -lX11 -lm -lpthread -lgtest -lgtest_main -losdutil -losdtgt -lsqlite3 -lwebsockets
+
+stderr: ftl_perf_manager.c: In function ?UPDATE_IO_REQUEST?:
+ftl_perf_manager.c:353:6: warning: variable ?flag? set but not used [-Wunused-but-set-variable]
+  int flag = 0;
+      ^
+ssd_io_manager.c: In function ?SSD_CH_ENABLE?:
+ssd_io_manager.c:259:10: warning: variable ?do_delay? set but not used [-Wunused-but-set-variable]
+  int64_t do_delay = 0;
+          ^
+ssd_io_manager.c: In function ?SSD_BLOCK_ERASE_DELAY?:
+ssd_io_manager.c:622:10: warning: variable ?end? set but not used [-Wunused-but-set-variable]
+  int64_t end = 0;
+          ^
+ssd_io_manager.c:621:10: warning: variable ?start? set but not used [-Wunused-but-set-variable]
+  int64_t start = 0;
+          ^
+In file included from form1.cpp:20:0:
+/usr/include/qt3/qimage.h: In member function ?bool QImageTextKeyLang::operator<(const QImageTextKeyLang&) const?:
+/usr/include/qt3/qimage.h:61:45: warning: suggest parentheses around ?&&? within ?||? [-Wparentheses]
+  { return key < other.key || key==other.key && lang < other.lang; }
+                                             ^
+
+changed: True
+
+TASK [host_tester : run host tests] ********************************************
+task path: /var/lib/jenkins/workspace/simulator-full/simulator-ci/ansible/roles/host_tester/tasks/main.yml:6
+2017-10-01T08:51:23.096522 (delta: 5.175781)         elapsed: 8.561254 ******** 
+Using module file /usr/lib/python2.7/dist-packages/ansible/modules/commands/command.py
+<localhost> ESTABLISH LOCAL CONNECTION FOR USER: jenkins
+<localhost> EXEC /bin/bash -c 'echo ~ && sleep 0'
+<localhost> EXEC /bin/bash -c '( umask 77 && mkdir -p "` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547 `" && echo ansible-tmp-1506847883.11-191179495699547="` echo /home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547 `" ) && sleep 0'
+<localhost> PUT /tmp/tmp8g7Vt0 TO /home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547/command.py
+<localhost> EXEC /bin/bash -c 'chmod u+x /home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547/ /home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547/command.py && sleep 0'
+<localhost> EXEC /bin/bash -c '/usr/bin/python /home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547/command.py; rm -rf "/home/jenkins/.ansible/tmp/ansible-tmp-1506847883.11-191179495699547/" > /dev/null 2>&1 && sleep 0'
