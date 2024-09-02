@@ -56,7 +56,8 @@ pipeline {
                         [
                             dir: 'simulator', 
                             branch: params.GERRIT_BRANCH,
-                            url: 'https://review.gerrithub.io/davidsaOpenu/simulator'
+                            url: 'https://review.gerrithub.io/davidsaOpenu/simulator',
+                            useSubmodules: true
                         ],
                         [
                             dir: 'nvme-cli', 
@@ -88,24 +89,18 @@ pipeline {
 
 
                     for (repo in repos) {
-                        if (repo.dir == 'kernel') {
-                            checkout(scmGit(
-                                branches: [[name: repo.branch]],
-                                extensions: [
-                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
-                                    [$class: 'CheckoutOption', timeout: repo.timeout]
-                                ],
-                                userRemoteConfigs: [
-                                    [url: repo.url]
-                                ]
-                            ))
-                        } else {
-                            dir(repo.dir) {
-                                deleteDir()
-                                git branch: repo.branch, url: repo.url
-                            }
-                        }
+                        checkout(scmGit(
+                            branches: [[name: repo.branch]],
+                            extensions: [
+                                [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
+                                [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 10)],
+                                [$class: 'SubmoduleOption', recursiveSubmodules: (repo.dir == 'simulator' ? true : false)]
+                            ],
+                            userRemoteConfigs: [
+                                [url: repo.url]
+                            ]
+                        ))
                     }
                 }
             }
