@@ -109,14 +109,26 @@ pipeline {
         stage('Handle Depend-On') {
             steps {
                 script {
-                    dir('simulator/infra/builder'){
-                        def decodedMessage = sh(
-                            script: "echo $GERRIT_CHANGE_COMMIT_MESSAGE | base64 -d",
-                            returnStdout: true
-                        ).trim()
+                    dir('simulator/infra/builder') {
+                        def commitMessage = env.GERRIT_CHANGE_COMMIT_MESSAGE ?: "Default commit message"
+                        def decodedMessage
+
+                        if (commitMessage != "Default commit message") {
+                            echo "Here"
+                            echo '${commitMessage}'                            
+                            // Attempt to decode if it's not the default message
+                            decodedMessage = sh(
+                                script: "echo '${commitMessage}' | base64 -d",
+                                returnStdout: true,
+                            ).trim()
+                            echo '${decodedMessage}'
+                        } else {
+                            // Use raw commit message if it's the default message
+                            decodedMessage = commitMessage
+                        }
+
                         echo "Decoded message: ${decodedMessage}"
-                        sh "./handle-depend-on-instructions.sh" + 
-                           " '${WORKSPACE}' '${decodedMessage}'"
+                        sh "./handle-depend-on-instructions.sh '${WORKSPACE}' '${decodedMessage}'"
                     }
                 }
             }
