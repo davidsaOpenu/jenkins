@@ -85,7 +85,13 @@ pipeline {
                             dir: 'nvmeCompl/dnvme', 
                             branch: 'master', 
                             url: 'https://review.gerrithub.io/davidsaOpenu/dnvme'
-                        ]
+                        ],
+                        [
+                            dir: 'open-osd',
+                            branch: 'master',
+                            url: 'https://review.gerrithub.io/davidsaOpenu/open-osd'
+                        ],
+
                     ]
 
 
