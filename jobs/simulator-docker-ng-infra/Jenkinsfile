@@ -7,7 +7,7 @@ pipeline {
             gerritProjects: [[
                 branches: [[
                     compareType: 'PLAIN', 
-                    pattern: 'master'
+                    pattern: "${params.GERRIT_BRANCH}" 
                 ]],
                 compareType: 'PLAIN',
                 disableStrictForbiddenFileVerification: false,
@@ -96,18 +96,54 @@ pipeline {
 
 
                     for (repo in repos) {
+/*
                         checkout(scmGit(
                             branches: [[name: repo.branch]],
                             extensions: [
                                 [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
                                 cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
+                                [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
                                 [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 10)],
-                                [$class: 'SubmoduleOption', recursiveSubmodules: (repo.dir == 'simulator' ? true : false)]
+                                [$class: 'SubmoduleOption', recursiveSubmodules: (repo.dir == 'simulator' ? true : false)],
                             ],
                             userRemoteConfigs: [
-                                [url: repo.url]
+                                [refspec: (repo.dir == 'simulator' ? params.GERRIT_REFSPEC : 'refs/heads/master'),
+                                 url: repo.url]
                             ]
                         ))
+*/
+
+
+                        if (repo.dir == 'simulator') {
+                            checkout(scmGit(
+                                branches: [[name: repo.branch]],
+                                extensions: [
+                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                    cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
+                                    [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                                    [$class: 'SubmoduleOption', recursiveSubmodules: true],  // Always true for simulator
+                                ],
+                                userRemoteConfigs: [
+                                    [refspec: params.GERRIT_REFSPEC,  // Specific to simulator
+                                     url: repo.url]
+                                ]
+                            ))
+                        } else {
+                            checkout(scmGit(
+                                branches: [[name: repo.branch]],
+                                extensions: [
+                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                    cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
+                                    [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 10)],
+                                    [$class: 'SubmoduleOption', recursiveSubmodules: false],  // False for non-simulator
+                                ],
+                                userRemoteConfigs: [
+                                    [url: repo.url]  // No refspec for non-simulator
+                                ]
+                            ))
+                        }
+
+
                     }
                 }
             }
