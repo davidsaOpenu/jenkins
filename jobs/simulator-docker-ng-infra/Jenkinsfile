@@ -94,7 +94,7 @@ pipeline {
 
                     ]
 
-
+                    sh "ls; rm -rf *; ls"
                     for (repo in repos) {
 /*
                         checkout(scmGit(
@@ -103,7 +103,7 @@ pipeline {
                                 [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
                                 cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
                                 [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                                [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 10)],
+                                [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 20)],
                                 [$class: 'SubmoduleOption', recursiveSubmodules: (repo.dir == 'simulator' ? true : false)],
                             ],
                             userRemoteConfigs: [
@@ -119,7 +119,6 @@ pipeline {
                                 branches: [[name: repo.branch]],
                                 extensions: [
                                     [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
                                     [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
                                     [$class: 'SubmoduleOption', recursiveSubmodules: true],  // Always true for simulator
                                 ],
@@ -133,8 +132,7 @@ pipeline {
                                 branches: [[name: repo.branch]],
                                 extensions: [
                                     [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
-                                    [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 10)],
+                                    [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 20)],
                                     [$class: 'SubmoduleOption', recursiveSubmodules: false],  // False for non-simulator
                                 ],
                                 userRemoteConfigs: [
