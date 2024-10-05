@@ -153,24 +153,20 @@ pipeline {
                 script {
                     dir('simulator/infra/builder') {
                         def commitMessage = env.GERRIT_CHANGE_COMMIT_MESSAGE ?: "Default commit message"
-                        def decodedMessage
+                        def encodedMessage
 
-                        if (commitMessage != "Default commit message") {
-                            echo "Here"
-                            echo '${commitMessage}'                            
-                            // Attempt to decode if it's not the default message
-                            decodedMessage = sh(
-                                script: "echo '${commitMessage}' | base64 -d",
-                                returnStdout: true,
+                        if (commitMessage == "Default commit message") {
+                            // Encode if it is the default message
+                            encodedMessage = sh(
+                                script: "echo '${commitMessage}' | base64",
+                                returnStdout: true
                             ).trim()
-                            echo '${decodedMessage}'
                         } else {
-                            // Use raw commit message if it's the default message
-                            decodedMessage = commitMessage
+                            // if it is not the default message, deliver as it is
+                            encodedMessage = commitMessage
                         }
 
-                        echo "Decoded message: ${decodedMessage}"
-                        sh "./handle-depend-on-instructions.sh '${WORKSPACE}' '${decodedMessage}'"
+                        sh "./handle-depend-on-instructions.sh '${WORKSPACE}' '${encodedMessage}'"
                     }
                 }
             }
