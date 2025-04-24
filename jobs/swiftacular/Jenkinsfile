@@ -1,0 +1,130 @@
+pipeline {
+    agent any
+
+    triggers {
+        gerrit(
+            customUrl: '',
+            gerritProjects: [[
+                branches: [[
+                    compareType: 'PLAIN', 
+                    pattern: "${params.GERRIT_BRANCH}" 
+                ]],
+                compareType: 'PLAIN',
+                disableStrictForbiddenFileVerification: false,
+                pattern: 'davidsaOpenu/swiftacular'
+            ]],
+            serverName: 'review.gerrithub.io',
+            triggerOnEvents: [
+                commentAddedContains(
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' + 
+                    '(\\n\\n)?\\s*(recheck)'
+                )
+            ]
+        )
+        cron('@daily')
+    }
+
+    options {
+        buildDiscarder(
+            logRotator(
+                daysToKeepStr: '14', 
+                numToKeepStr: '24'
+            )
+        )
+        timeout(time: 220, unit: 'MINUTES')
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        string(
+            name: 'GERRIT_REFSPEC', 
+            defaultValue: 'refs/heads/master', 
+            description: ''
+        )
+        string(
+            name: 'GERRIT_BRANCH', 
+            defaultValue: 'master', 
+            description: ''
+        )
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    def repos = [
+                        [
+                            dir: 'swiftacular', 
+                            branch: params.GERRIT_BRANCH,
+                            url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
+                            useSubmodules: true
+                        ],
+                    ]
+
+                    sh "ls; rm -rf *; ls"
+                    for (repo in repos) {
+                        if (repo.dir == 'swiftacular') {
+                            checkout(scmGit(
+                                branches: [[name: repo.branch]],
+                                extensions: [
+                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                    [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                                    [$class: 'SubmoduleOption', recursiveSubmodules: true],
+                                    [$class: 'CloneOption', timeout: 20],
+                                ],
+                                userRemoteConfigs: [
+                                    [refspec: params.GERRIT_REFSPEC,
+                                     url: repo.url]
+                                ]
+                            ))
+                        } else {
+                            checkout(scmGit(
+                                branches: [[name: repo.branch]],
+                                extensions: [
+                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                    [$class: 'CloneOption', timeout: 20],
+                                    [$class: 'SubmoduleOption', recursiveSubmodules: false],
+                                ],
+                                userRemoteConfigs: [
+                                    [url: repo.url] 
+                                ]
+                            ))
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+        stage('Build and Test') {
+            steps {
+                dir('swiftacular'){
+                    sh './cleanup.sh; source ~/.bashrc; ./bootstrap_swift_with_monitoring.sh'
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                script {
+                    dir('swiftacular') {
+                        sh './cleanup.sh'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+      always {
+          script {
+            dir('swiftacular') {
+              sh './cleanup.sh'
+            }
+          }
+      }
+   }
+}
+
