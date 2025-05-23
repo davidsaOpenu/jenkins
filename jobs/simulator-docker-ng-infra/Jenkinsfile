@@ -15,7 +15,12 @@ pipeline {
             ]],
             serverName: 'review.gerrithub.io',
             triggerOnEvents: [
-                patchsetCreated(),
+                patchsetCreated(
+                    excludeDrafts: true,
+                    excludeTrivialRebase: true,
+                    excludeNoCodeChange: true,
+                    excludeWip: true
+                ),
                 draftPublished(),
                 changeMerged(),
                 changeRestored(),
