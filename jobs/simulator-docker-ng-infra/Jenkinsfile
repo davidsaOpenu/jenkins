@@ -15,6 +15,10 @@ pipeline {
             ]],
             serverName: 'review.gerrithub.io',
             triggerOnEvents: [
+                patchsetCreated(),
+                draftPublished(),
+                changeMerged(),
+                changeRestored(),
                 commentAddedContains(
                     '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' + 
                     '(\\n\\n)?\\s*(recheck)'
