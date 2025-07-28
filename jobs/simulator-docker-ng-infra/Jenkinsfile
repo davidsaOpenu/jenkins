@@ -158,24 +158,14 @@ pipeline {
         }
 
         stage('Handle Depend-On') {
-            steps {
+           steps {
                 script {
                     dir('simulator/infra/builder') {
-                        def commitMessage = env.GERRIT_CHANGE_COMMIT_MESSAGE ?: "Default commit message"
-                        def encodedMessage
-
-                        if (commitMessage == "Default commit message") {
-                            // Encode if it is the default message
-                            encodedMessage = sh(
-                                script: "echo '${commitMessage}' | base64",
-                                returnStdout: true
-                            ).trim()
+                        if (env.GERRIT_CHANGE_NUMBER) {
+                            sh "./handle-depend-on-instructions.sh '${WORKSPACE}' ${env.GERRIT_CHANGE_NUMBER} davidsaOpenu gerrit"
                         } else {
-                            // if it is not the default message, deliver as it is
-                            encodedMessage = commitMessage
+                            sh 'echo Periodic run - no need for ./handle-depend-on-instructions.sh'
                         }
-
-                        sh "./handle-depend-on-instructions.sh '${WORKSPACE}' '${encodedMessage}'"
                     }
                 }
             }
