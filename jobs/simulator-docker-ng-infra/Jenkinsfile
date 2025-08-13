@@ -62,6 +62,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
+                    sh "ls; rm -rf *; ls"
+
                     def repos = [
                         [
                             dir: 'simulator', 
@@ -103,26 +105,7 @@ pipeline {
 
                     ]
 
-                    sh "ls; rm -rf *; ls"
                     for (repo in repos) {
-/*
-                        checkout(scmGit(
-                            branches: [[name: repo.branch]],
-                            extensions: [
-                                [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                cleanBeforeCheckout(deleteUntrackedNestedRepositories: true),
-                                [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                                [$class: 'CheckoutOption', timeout: (repo.dir == 'kernel' ? repo.timeout : 20)],
-                                [$class: 'SubmoduleOption', recursiveSubmodules: (repo.dir == 'simulator' ? true : false)],
-                            ],
-                            userRemoteConfigs: [
-                                [refspec: (repo.dir == 'simulator' ? params.GERRIT_REFSPEC : 'refs/heads/master'),
-                                 url: repo.url]
-                            ]
-                        ))
-*/
-
-
                         if (repo.dir == 'simulator') {
                             checkout(scmGit(
                                 branches: [[name: repo.branch]],
@@ -150,8 +133,6 @@ pipeline {
                                 ]
                             ))
                         }
-
-
                     }
                 }
             }
@@ -170,7 +151,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build and Test') {
             steps {
                 dir('simulator/infra/builder'){
@@ -179,11 +160,11 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Cleanup') {
             steps {
                 script {
                     dir('simulator') {
-                        sh 'echo Deploy - TBD'
+                        sh 'echo Cleanup destory vm dont delete the initial ubuntu image'
                     }
                 }
             }
