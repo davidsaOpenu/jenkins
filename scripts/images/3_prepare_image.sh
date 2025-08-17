@@ -25,6 +25,15 @@ if [ "$CONTAINER_RUNTIME" != "docker" ] && [ "$CONTAINER_RUNTIME" != "podman" ];
     exit 1
 fi
 
+# Check if the effective user ID is 0 (root)
+if [[ "$EUID" -ne 0 ]]; then
+    echo "This script needs to be run with sudo."
+    echo "Please run: sudo $0"
+    exit 1
+fi
+
+echo "Script is running with sudo privileges."
+
 echo "Customizing VM image: $IMAGE"
 echo "Creating user: $USERNAME"
 echo "Installing container runtime: $CONTAINER_RUNTIME"

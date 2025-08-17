@@ -8,6 +8,7 @@ set -e
 IMAGE=$1
 NEW_SIZE=$2
 
+
 if [ -z "$IMAGE" ] || [ -z "$NEW_SIZE" ]; then
     echo "Usage: $0 <image-file> <new-size>"
     echo "Example: $0 ubuntu-24.04.qcow2 15G"
@@ -19,6 +20,15 @@ if [ ! -f "$IMAGE" ]; then
     echo "Error: Image file '$IMAGE' not found!"
     exit 1
 fi
+
+# Check if the effective user ID is 0 (root)
+if [[ "$EUID" -ne 0 ]]; then
+    echo "This script needs to be run with sudo."
+    echo "Please run: sudo $0"
+    exit 1
+fi
+
+echo "Script is running with sudo privileges."
 
 echo "=== VM Resize with apt-get -o options ==="
 echo "Image: $IMAGE"
