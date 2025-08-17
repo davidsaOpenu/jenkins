@@ -183,12 +183,24 @@ pipeline {
                         echo $IMAGE_NAME > vm_image.txt
                         
                         # Start QEMU VM in background
+
                         qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE_NAME \\
                             -nic user,hostfwd=tcp::$free_tcp_port-:22 -nographic &
                         VM_PID=$!
                         echo $VM_PID > vm_pid.txt
                         echo "Started VM with PID: $VM_PID"
                         
+                        # Give VM a moment to start
+                        sleep 5
+                        
+                        # Check if VM process is still running
+                        if ! kill -0 $VM_PID 2>/dev/null; then
+                            echo "ERROR: VM process failed to start or crashed immediately"
+                            echo "VM PID $VM_PID is not running"
+                            exit 1
+                        fi
+                        echo "VM process is running, waiting for SSH connectivity..."
+
                         # Wait for VM to launch (check SSH connectivity)
                         echo "Waiting for VM to be ready..."
                         for i in {1..60}; do
