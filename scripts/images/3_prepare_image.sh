@@ -286,6 +286,8 @@ elif [ "$CONTAINER_RUNTIME" = "docker" ]; then
     echo "  - test-docker.sh      : Test Docker installation"
 fi
 echo ""
+echo "Boot VM with  qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE -nic user,hostfwd=tcp::2225-:22 -nographic"
+echo ""
 echo "After booting the VM, run these commands to test:"
 echo "  sudo /opt/$USERNAME/test-network.sh"
 if [ "$CONTAINER_RUNTIME" = "podman" ]; then
