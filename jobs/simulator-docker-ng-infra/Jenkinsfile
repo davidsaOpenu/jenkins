@@ -152,16 +152,26 @@ pipeline {
             }
         }
 
+
+        stage('Build and Test') {
+            steps {
+                dir('simulator/infra/builder'){
+                    sh './run-ci.sh'
+                }
+            }
+        }
+
+
         stage('Setup VM and Test Podman') {
             steps {
                 script {
                     sh '''
                         # Set image name
                         IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-podman.img
-                        
+
                         # Download the image (bypass proxy)
                         wget --no-proxy http://192.114.0.189/$IMAGE_NAME
-                        
+
                         # Function to find free port
                         find_free_port() {
                             local port
@@ -170,18 +180,18 @@ pipeline {
                                     echo $port
                                     return
                                 fi
-                            done
+                            done 
                             echo 2224  # fallback
                         }
-                        
+
                         # Get free TCP port
                         free_tcp_port=$(find_free_port)
                         echo "Using port: $free_tcp_port"
-                        
+
                         # Store variables for cleanup stage
                         echo $free_tcp_port > vm_port.txt
                         echo $IMAGE_NAME > vm_image.txt
-                        
+
                         # Start QEMU VM in background
 
                         qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE_NAME \\
@@ -189,10 +199,10 @@ pipeline {
                         VM_PID=$!
                         echo $VM_PID > vm_pid.txt
                         echo "Started VM with PID: $VM_PID"
-                        
+
                         # Give VM a moment to start
                         sleep 5
-                        
+
                         # Check if VM process is still running
                         if ! kill -0 $VM_PID 2>/dev/null; then
                             echo "ERROR: VM process failed to start or crashed immediately"
@@ -211,28 +221,27 @@ pipeline {
                             echo "Attempt $i: VM not ready yet, waiting..."
                             sleep 10
                         done
-                        
-                        # Copy simulator folder to the VM
+
+                        # Copy simulator folder to the VM 
                         echo "Copying simulator folder to VM..."
                         scp -o StrictHostKeyChecking=no -P $free_tcp_port -r simulator elk@localhost:~/simulator
-                        
+
+                        echo "Copying logs folder to VM..."
+                        scp -o StrictHostKeyChecking=no -P $free_tcp_port -r logs elk@localhost:~/logs
+
                         # Execute podman command on the VM and show output
                         echo "Testing podman on VM..."
                         echo "==================== PODMAN OUTPUT ===================="
                         ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "podman run hello-world" || echo "Podman command failed"
+                        echo "======================= END OUTPUT ====================="
+                        echo "==================== START ELK ======================"
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "cd ~/simulator/infra/ELK/; ./install_and_start_elk.sh ../../../logs ../ELK | true"
                         echo "======================= END OUTPUT ====================="
                     '''
                 }
             }
         }
 
-        stage('Build and Test') {
-            steps {
-                dir('simulator/infra/builder'){
-                    sh './run-ci.sh'
-                }
-            }
-        }
 
         stage('Cleanup') {
             steps {
