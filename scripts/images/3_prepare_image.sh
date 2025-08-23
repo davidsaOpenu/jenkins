@@ -138,6 +138,7 @@ EOF" -a "$IMAGE"
     virt-customize --run-command "chown 1000:1000 /run/user/1000" -a "$IMAGE"
     virt-customize --run-command "chmod 700 /run/user/1000" -a "$IMAGE"
 
+    virt-customize --run-command "apt install -y podman-compose" -a "$IMAGE"
 elif [ "$CONTAINER_RUNTIME" = "docker" ]; then
     echo "Installing Docker..."
     
