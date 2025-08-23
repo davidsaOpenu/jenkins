@@ -1,6 +1,14 @@
 pipeline {
     agent any
 
+    environment {
+        GIT_SSL_NO_VERIFY = '1'
+        http_proxy = ''
+        https_proxy = ''
+        HTTP_PROXY = ''
+        HTTPS_PROXY = ''
+    }
+
     triggers {
         gerrit(
             customUrl: '',
@@ -53,14 +61,16 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    def repos = [
+                  withEnv(['GIT_SSL_NO_VERIFY=1', 'http_proxy=', 'https_proxy=', 'HTTP_PROXY=', 'HTTPS_PROXY=']) {
+                      def repos = [
                         [
                             dir: 'swiftacular', 
                             branch: params.GERRIT_BRANCH,
                             url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
                             useSubmodules: true
                         ],
-                    ]
+                      ]
+                    }
 
                     sh "ls; rm -rf *; ls"
                     for (repo in repos) {
