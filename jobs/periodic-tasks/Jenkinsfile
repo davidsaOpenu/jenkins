@@ -1,0 +1,103 @@
+pipeline {
+    agent any
+
+    triggers {
+        cron('H/15 * * * *')
+    }
+
+    options {
+        buildDiscarder(
+            logRotator(
+                daysToKeepStr: '14', 
+                numToKeepStr: '24'
+            )
+        )
+        timeout(time: 10, unit: 'MINUTES')
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+
+    stages {
+        stage('xv6-test-image build') {
+            steps {
+                script {
+                    sh '''
+                        echo "================================================================="
+                        echo "Run xv6-test-image build to save time and prevent xv6 job timeout"
+                        rm -rf xv6
+                        git clone "https://review.gerrithub.io/davidsaOpenu/xv6"
+                        cd xv6
+                        docker build --build-arg USERNAME=$(whoami) \
+                                     --build-arg GRPNAME=$(id -gn) \
+                                     --build-arg UID=$(id -u) \
+                                     --build-arg GID=$(id -g) \
+                                     -t xv6-test-image .
+                    '''
+                }
+            }
+        }
+        stage('Stop docker containers run > 5h') {
+            steps {
+                script {
+                    sh '''
+                        echo "====================================================="
+                        echo "Stop docker containers that are running more them 5 h"
+
+                        current_timestamp=$(date +%s)
+
+                        containers=$(docker ps --format "{{.ID}}\t{{.CreatedAt}}")
+
+                        while IFS=$'\t' read -r container_id created_at; do
+                            echo "Remove the +0300 IDT portion from the container creation timestamp"
+                            created_at=$(echo "$created_at" | awk '{print $1, $2}')
+
+                            echo "Convert the container creation time to a timestamp"
+                            created_timestamp=$(date -d "$created_at" +%s 2>/dev/null)
+
+                            if [ -z "$created_timestamp" ]; then
+                                echo "Failed to parse container creation time: $created_at"
+                                continue
+                            fi
+
+                            time_difference=$((current_timestamp - created_timestamp))
+
+                            if [ "$time_difference" -gt 18000 ]; then # 5h=18000secs
+                                docker stop "$container_id" | true
+
+                                docker rm "$container_id" | true
+
+                                echo "Stopped and removed container: $container_id"
+                            fi
+                        done <<< "$containers"
+                    '''
+                }
+            }
+        }
+
+        stage('Force remove stopped container images') {
+            steps {
+                script {
+                    sh '''
+                        echo "======================================================"
+                        echo "Force remove images associated with stopped containers"
+                        docker images --quiet --filter=dangling=true | xargs --no-run-if-empty docker rmi -f
+                    '''
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+            script {
+                sh '''
+                    echo "==================== post stage - always  ===================="
+                    
+                '''
+            }
+        }
+    }
+}
+
