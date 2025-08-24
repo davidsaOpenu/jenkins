@@ -248,6 +248,12 @@ EOF" -a "$IMAGE"
 
     virt-customize --run-command "chmod +x /opt/$USERNAME/test-docker.sh" -a "$IMAGE"
     virt-customize --run-command "chown $USERNAME:$USERNAME /opt/$USERNAME/test-docker.sh" -a "$IMAGE"
+
+
+    # Install toolchain for xv6
+    virt-customize --run-command 'apt-get install -y build-essential qemu-system-x86 clang-format-16 shellcheck gcc-multilib' -a "$IMAGE"
+
+
 fi
 
 # Install jq for JSON parsing in the test scripts
@@ -261,10 +267,6 @@ virt-customize --run-command 'ssh-keygen -A' -a "$IMAGE"
 # Enable network interface for Ubuntu cloud images (fallback)
 virt-customize --run-command 'echo "@reboot root dhclient" >> /etc/crontab' -a "$IMAGE"
 
-    
-# Install toolchain
-virt-customize --run-command 'apt-get install -y build-essential qemu-system-x86 clang-format-16 shellcheck gcc-multilib' -a "$IMAGE"
-    
 
 # Clean up package cache
 virt-customize --run-command 'apt-get autoremove -y && apt-get autoclean' -a "$IMAGE"
