@@ -1,0 +1,211 @@
+pipeline {
+    agent any
+
+    triggers {
+        gerrit(
+            customUrl: '',
+            gerritProjects: [[
+                branches: [[
+                    compareType: 'PLAIN', 
+                    pattern: "${params.GERRIT_BRANCH}" 
+                ]],
+                compareType: 'PLAIN',
+                disableStrictForbiddenFileVerification: false,
+                pattern: 'davidsaOpenu/xv6'
+            ]],
+            serverName: 'review.gerrithub.io',
+            triggerOnEvents: [
+                patchsetCreated(
+                    excludeDrafts: true,
+                    excludeTrivialRebase: true,
+                    excludeNoCodeChange: true,
+                    excludeWip: true
+                ),
+                draftPublished(),
+                changeMerged(),
+                changeRestored(),
+                commentAddedContains(
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' + 
+                    '(\\n\\n)?\\s*(recheck)'
+                )
+            ]
+        )
+        cron('@daily')
+    }
+
+    options {
+        buildDiscarder(
+            logRotator(
+                daysToKeepStr: '14', 
+                numToKeepStr: '24'
+            )
+        )
+        timeout(time: 220, unit: 'MINUTES')
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        string(
+            name: 'GERRIT_REFSPEC', 
+            defaultValue: 'refs/heads/master', 
+            description: ''
+        )
+        string(
+            name: 'GERRIT_BRANCH', 
+            defaultValue: 'master', 
+            description: ''
+        )
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    sh "ls; rm -rf *; ls"
+
+                    def repos = [
+                        [
+                            dir: 'xv6', 
+                            branch: params.GERRIT_BRANCH,
+                            url: 'https://review.gerrithub.io/davidsaOpenu/xv6',
+                            useSubmodules: true
+                        ],
+
+                    ]
+
+                    for (repo in repos) {
+                        if (repo.dir == 'xv6') {
+                            checkout(scmGit(
+                                branches: [[name: repo.branch]],
+                                extensions: [
+                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                    [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                                    [$class: 'SubmoduleOption', recursiveSubmodules: true],
+                                    [$class: 'CloneOption', timeout: 20],
+                                ],
+                                userRemoteConfigs: [
+                                    [refspec: params.GERRIT_REFSPEC,
+                                     url: repo.url]
+                                ]
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Setup VM and Test Podman') {
+            steps {
+                script {
+                    sh '''
+                        # Set image name
+                        IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-docker.img
+
+                        # Download the image (bypass proxy)
+                        wget --no-proxy http://192.114.0.189/$IMAGE_NAME
+
+                        # Function to find free port
+                        find_free_port() {
+                            local port
+                            for port in {2224..2299}; do
+                                if ! netstat -tuln | grep -q ":$port "; then
+                                    echo $port
+                                    return
+                                fi
+                            done 
+                            echo 2224  # fallback
+                        }
+
+                        # Get free TCP port
+                        free_tcp_port=$(find_free_port)
+                        echo "Using port: $free_tcp_port"
+
+                        # Store variables for cleanup stage
+                        echo $free_tcp_port > vm_port.txt
+                        echo $IMAGE_NAME > vm_image.txt
+
+                        # Start QEMU VM in background
+
+                        qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE_NAME \\
+                            -nic user,hostfwd=tcp::$free_tcp_port-:22 -nographic &
+                        VM_PID=$!
+                        echo $VM_PID > vm_pid.txt
+                        echo "Started VM with PID: $VM_PID"
+
+                        # Give VM a moment to start
+                        sleep 5
+
+                        # Check if VM process is still running
+                        if ! kill -0 $VM_PID 2>/dev/null; then
+                            echo "ERROR: VM process failed to start or crashed immediately"
+                            echo "VM PID $VM_PID is not running"
+                            exit 1
+                        fi
+                        echo "VM process is running, waiting for SSH connectivity..."
+
+                        # Wait for VM to launch (check SSH connectivity)
+                        echo "Waiting for VM to be ready..."
+                        for i in {1..60}; do
+                            if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "echo VM is ready" 2>/dev/null; then
+                                echo "VM is ready after $i attempts"
+                                break
+                            fi
+                            echo "Attempt $i: VM not ready yet, waiting..."
+                            sleep 10
+                        done
+
+                        # Copy xv6 folder to the VM 
+                        echo "Copying xv6 folder to VM..."
+                        scp -o StrictHostKeyChecking=no -P $free_tcp_port -r xv6 student@localhost:~/xv6
+
+                        # Execute docker command on the VM and show output
+                        echo "Testing docker on VM..."
+                        echo "==================== Docker OUTPUT ===================="
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "docker run hello-world" || echo "Docker command failed"
+                        echo "======================= END OUTPUT ====================="
+                        echo "==================== START ELK ======================"
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "cd ~/xv6; ls -all"
+                        echo "======================= END OUTPUT ====================="
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                sh '''
+                    echo "==================== VM CLEANUP ===================="
+                    
+                    # Cleanup VM if PID file exists
+                    if [ -f vm_pid.txt ]; then
+                        VM_PID=$(cat vm_pid.txt)
+                        echo "Cleaning up VM with PID: $VM_PID"
+                        kill $VM_PID || true
+                        wait $VM_PID 2>/dev/null || true
+                        rm -f vm_pid.txt
+                    else
+                        echo "No VM PID file found - VM may have already been cleaned up"
+                    fi
+                    
+                    # Remove the image file if it exists
+                    if [ -f vm_image.txt ]; then
+                        IMAGE_NAME=$(cat vm_image.txt)
+                        echo "Removing image file: $IMAGE_NAME"
+                        rm -f $IMAGE_NAME
+                        rm -f vm_image.txt
+                    fi
+                    
+                    # Clean up port file
+                    rm -f vm_port.txt
+                    
+                    echo "VM cleanup completed"
+                    echo "==================== END CLEANUP ===================="
+                '''
+            }
+        }
+    }
+}
+
