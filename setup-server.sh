@@ -59,6 +59,9 @@ sudo usermod -aG docker jenkins
 # run git config for the jenkins user
 git config --global https.proxy https://proxy.cslab.openu.ac.il:80
 git config --global http.proxy http://proxy.cslab.openu.ac.il:80
+git config --list # verify
+git ls-remote https://github.com/davidsaOpenu/jenkins HEAD # verify
+
 # https://stackoverflow.com/questions/51088635/git-clone-error-gnutls-handshake-failed-an-unexpected-tls-packet-was-receive
 
 ##############################################################################
