@@ -229,6 +229,9 @@ pipeline {
                         echo "Copying logs folder to VM..."
                         scp -o StrictHostKeyChecking=no -P $free_tcp_port -r logs elk@localhost:~/logs
 
+                        echo "Print with ls -R"
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "ls -R"
+
                         # Execute podman command on the VM and show output
                         echo "Testing podman on VM..."
                         echo "==================== PODMAN OUTPUT ===================="
