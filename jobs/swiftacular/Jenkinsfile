@@ -98,15 +98,25 @@ pipeline {
             }
         }
 
-        stage('Build and Test') {
+        stage('Pre-cleanup') {
             steps {
-                dir('swiftacular'){
-                    sh './cleanup.sh; source ~/.bashrc; ./bootstrap_swift_with_monitoring.sh'
+                script {
+                    dir('swiftacular') {
+                        sh './cleanup.sh'
+                    }
                 }
             }
         }
 
-        stage('Cleanup') {
+        stage('Build and Test') {
+            steps {
+                dir('swiftacular'){
+                    sh './bootstrap_swift_with_monitoring.sh'
+                }
+            }
+        }
+
+        stage('Post-cleanup') {
             steps {
                 script {
                     dir('swiftacular') {
