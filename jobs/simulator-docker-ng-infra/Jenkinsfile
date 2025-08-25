@@ -113,7 +113,7 @@ pipeline {
                                     [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
                                     [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
                                     [$class: 'SubmoduleOption', recursiveSubmodules: true],  // Always true for simulator
-                                    [$class: 'CloneOption', timeout: 20],
+                                    [$class: 'CloneOption', timeout: 30],
                                 ],
                                 userRemoteConfigs: [
                                     [refspec: params.GERRIT_REFSPEC,  // Specific to simulator
@@ -125,7 +125,7 @@ pipeline {
                                 branches: [[name: repo.branch]],
                                 extensions: [
                                     [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    [$class: 'CloneOption', timeout: 20],
+                                    [$class: 'CloneOption', timeout: 30],
                                     [$class: 'SubmoduleOption', recursiveSubmodules: false],  // False for non-simulator
                                 ],
                                 userRemoteConfigs: [
