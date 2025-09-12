@@ -6,8 +6,8 @@ pipeline {
             customUrl: '',
             gerritProjects: [[
                 branches: [[
-                    compareType: 'PLAIN', 
-                    pattern: "${params.GERRIT_BRANCH}" 
+                    compareType: 'PLAIN',
+                    pattern: "${params.GERRIT_BRANCH}"
                 ]],
                 compareType: 'PLAIN',
                 disableStrictForbiddenFileVerification: false,
@@ -25,7 +25,7 @@ pipeline {
                 changeMerged(),
                 changeRestored(),
                 commentAddedContains(
-                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' + 
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' +
                     '(\\n\\n)?\\s*(recheck)'
                 )
             ]
@@ -40,9 +40,7 @@ pipeline {
                 numToKeepStr: '24'
             )
         )
-        timeout(time: 220, unit: 'MINUTES')
         timestamps()
-        disableConcurrentBuilds(abortPrevious: true)
     }
 
     parameters {
@@ -59,198 +57,27 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Acquire lock') {
             steps {
                 script {
-                    sh "ls; rm -rf *; ls"
-
-                    def repos = [
-                        [
-                            dir: 'simulator', 
-                            branch: params.GERRIT_BRANCH,
-                            url: 'https://review.gerrithub.io/davidsaOpenu/simulator',
-                            useSubmodules: true
-                        ],
-                        [
-                            dir: 'nvme-cli', 
-                            branch: 'master', 
-                            url: 'https://review.gerrithub.io/davidsaOpenu/nvme-cli'
-                        ],
-                        [
-                            dir: 'kernel', 
-                            branch: 'master', 
-                            url: 'https://review.gerrithub.io/davidsaOpenu/kernel',
-                            timeout: 20
-                        ],
-                        [
-                            dir: 'qemu', 
-                            branch: 'master', 
-                            url: 'https://review.gerrithub.io/davidsaOpenu/qemu'
-                        ],
-                        [
-                            dir: 'nvmeCompl/tnvme', 
-                            branch: 'rev-1.2',
-                            url: 'https://review.gerrithub.io/davidsaOpenu/tnvme'
-                        ],
-                        [
-                            dir: 'nvmeCompl/dnvme', 
-                            branch: 'master', 
-                            url: 'https://review.gerrithub.io/davidsaOpenu/dnvme'
-                        ],
-                        [
-                            dir: 'open-osd',
-                            branch: 'master',
-                            url: 'https://review.gerrithub.io/davidsaOpenu/open-osd'
-                        ],
-
-                    ]
-
-                    for (repo in repos) {
-                        if (repo.dir == 'simulator') {
-                            checkout(scmGit(
-                                branches: [[name: repo.branch]],
-                                extensions: [
-                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                                    [$class: 'SubmoduleOption', recursiveSubmodules: true],  // Always true for simulator
-                                    [$class: 'CloneOption', timeout: 30],
-                                ],
-                                userRemoteConfigs: [
-                                    [refspec: params.GERRIT_REFSPEC,  // Specific to simulator
-                                     url: repo.url]
-                                ]
-                            ))
-                        } else {
-                            checkout(scmGit(
-                                branches: [[name: repo.branch]],
-                                extensions: [
-                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    [$class: 'CloneOption', timeout: 30],
-                                    [$class: 'SubmoduleOption', recursiveSubmodules: false],  // False for non-simulator
-                                ],
-                                userRemoteConfigs: [
-                                    [url: repo.url]  // No refspec for non-simulator
-                                ]
-                            ))
+                    if (env.GERRIT_CHANGE_ID) {
+                        // Gerrit builds: job-global + Change-ID specific lock
+                        lock(resource: "job-${env.JOB_NAME}") {
+                            lock(resource: "gerrit-${env.GERRIT_CHANGE_ID}", inversePrecedence: true) {
+			        echo "Acquired locks: job=${env.JOB_NAME}, change=${env.GERRIT_CHANGE_ID}"
+                                timeout(time: 220, unit: 'MINUTES') {  // Timeout only during execution
+                                    runPipeline()
+                                }
+                            }
                         }
-                    }
-                }
-            }
-        }
-
-        stage('Handle Depend-On') {
-           steps {
-                script {
-                    dir('simulator/infra/builder') {
-                        if (env.GERRIT_CHANGE_NUMBER) {
-                            sh "./handle-depend-on-instructions.sh '${WORKSPACE}' ${env.GERRIT_CHANGE_NUMBER} davidsaOpenu gerrit"
-                        } else {
-                            sh 'echo Periodic run - no need for ./handle-depend-on-instructions.sh'
+                    } else {
+                        // Non-Gerrit builds: only global lock
+                        lock(resource: "job-${env.JOB_NAME}") {
+			    echo "Acquired lock: job=${env.JOB_NAME} (non-Gerrit build)"
+                            timeout(time: 220, unit: 'MINUTES') {  // Timeout only during execution
+                                runPipeline()
+                            }
                         }
-                    }
-                }
-            }
-        }
-
-
-        stage('Build and Test') {
-            steps {
-                dir('simulator/infra/builder'){
-                    sh './run-ci.sh'
-                }
-            }
-        }
-
-
-        stage('Setup VM and Test Podman') {
-            steps {
-                script {
-                    sh '''
-                        # Set image name
-                        IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-podman.img
-
-                        # Download the image (bypass proxy)
-                        wget --no-proxy http://192.114.0.189/$IMAGE_NAME
-
-                        # Function to find free port
-                        find_free_port() {
-                            local port
-                            for port in {2224..2299}; do
-                                if ! netstat -tuln | grep -q ":$port "; then
-                                    echo $port
-                                    return
-                                fi
-                            done 
-                            echo 2224  # fallback
-                        }
-
-                        # Get free TCP port
-                        free_tcp_port=$(find_free_port)
-                        echo "Using port: $free_tcp_port"
-
-                        # Store variables for cleanup stage
-                        echo $free_tcp_port > vm_port.txt
-                        echo $IMAGE_NAME > vm_image.txt
-
-                        # Start QEMU VM in background
-
-                        qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE_NAME \\
-                            -nic user,hostfwd=tcp::$free_tcp_port-:22 -nographic &
-                        VM_PID=$!
-                        echo $VM_PID > vm_pid.txt
-                        echo "Started VM with PID: $VM_PID"
-
-                        # Give VM a moment to start
-                        sleep 5
-
-                        # Check if VM process is still running
-                        if ! kill -0 $VM_PID 2>/dev/null; then
-                            echo "ERROR: VM process failed to start or crashed immediately"
-                            echo "VM PID $VM_PID is not running"
-                            exit 1
-                        fi
-                        echo "VM process is running, waiting for SSH connectivity..."
-
-                        # Wait for VM to launch (check SSH connectivity)
-                        echo "Waiting for VM to be ready..."
-                        for i in {1..60}; do
-                            if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "echo VM is ready" 2>/dev/null; then
-                                echo "VM is ready after $i attempts"
-                                break
-                            fi
-                            echo "Attempt $i: VM not ready yet, waiting..."
-                            sleep 10
-                        done
-
-                        # Copy simulator folder to the VM 
-                        echo "Copying simulator folder to VM..."
-                        scp -o StrictHostKeyChecking=no -P $free_tcp_port -r simulator elk@localhost:~/simulator
-
-                        echo "Copying logs folder to VM..."
-                        scp -o StrictHostKeyChecking=no -P $free_tcp_port -r logs elk@localhost:~/logs
-
-                        echo "Print with ls -R"
-                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "ls -R"
-
-                        # Execute podman command on the VM and show output
-                        echo "Testing podman on VM..."
-                        echo "==================== PODMAN OUTPUT ===================="
-                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "podman run hello-world" || echo "Podman command failed"
-                        echo "======================= END OUTPUT ====================="
-                        echo "==================== START ELK ======================"
-                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "cd ~/simulator/infra/ELK/; ./install_and_start_elk.sh ../../../logs ../ELK | true"
-                        echo "======================= END OUTPUT ====================="
-                    '''
-                }
-            }
-        }
-
-
-        stage('Cleanup') {
-            steps {
-                script {
-                    dir('simulator') {
-                        sh 'echo Cleanup destory vm dont delete the initial ubuntu image'
                     }
                 }
             }
@@ -263,7 +90,6 @@ pipeline {
                 sh '''
                     echo "==================== VM CLEANUP ===================="
                     
-                    # Cleanup VM if PID file exists
                     if [ -f vm_pid.txt ]; then
                         VM_PID=$(cat vm_pid.txt)
                         echo "Cleaning up VM with PID: $VM_PID"
@@ -273,22 +99,203 @@ pipeline {
                     else
                         echo "No VM PID file found - VM may have already been cleaned up"
                     fi
-                    
-                    # Remove the image file if it exists
+
                     if [ -f vm_image.txt ]; then
                         IMAGE_NAME=$(cat vm_image.txt)
                         echo "Removing image file: $IMAGE_NAME"
                         rm -f $IMAGE_NAME
                         rm -f vm_image.txt
                     fi
-                    
-                    # Clean up port file
+
                     rm -f vm_port.txt
-                    
+
                     echo "VM cleanup completed"
                     echo "==================== END CLEANUP ===================="
                 '''
             }
+        }
+    }
+}
+
+def runPipeline() {
+    stage('Checkout') {
+        script {
+            sh "ls; rm -rf *; ls"
+
+            def repos = [
+                [
+                    dir: 'simulator',
+                    branch: params.GERRIT_BRANCH,
+                    url: 'https://review.gerrithub.io/davidsaOpenu/simulator',
+                    useSubmodules: true
+                ],
+                [
+                    dir: 'nvme-cli',
+                    branch: 'master',
+                    url: 'https://review.gerrithub.io/davidsaOpenu/nvme-cli'
+                ],
+                [
+                    dir: 'kernel',
+                    branch: 'master',
+                    url: 'https://review.gerrithub.io/davidsaOpenu/kernel',
+                    timeout: 20
+                ],
+                [
+                    dir: 'qemu',
+                    branch: 'master',
+                    url: 'https://review.gerrithub.io/davidsaOpenu/qemu'
+                ],
+                [
+                    dir: 'nvmeCompl/tnvme',
+                    branch: 'rev-1.2',
+                    url: 'https://review.gerrithub.io/davidsaOpenu/tnvme'
+                ],
+                [
+                    dir: 'nvmeCompl/dnvme',
+                    branch: 'master',
+                    url: 'https://review.gerrithub.io/davidsaOpenu/dnvme'
+                ],
+                [
+                    dir: 'open-osd',
+                    branch: 'master',
+                    url: 'https://review.gerrithub.io/davidsaOpenu/open-osd'
+                ],
+            ]
+
+            for (repo in repos) {
+                if (repo.dir == 'simulator') {
+                    checkout(scmGit(
+                        branches: [[name: repo.branch]],
+                        extensions: [
+                            [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                            [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                            [$class: 'SubmoduleOption', recursiveSubmodules: true], // Always true for simulator
+                            [$class: 'CloneOption', timeout: 30],
+                        ],
+                        userRemoteConfigs: [
+			    [refspec: params.GERRIT_REFSPEC, // Specific to simulator
+			     url: repo.url]
+		        ]
+                    ))
+                } else {
+                    checkout(scmGit(
+                        branches: [[name: repo.branch]],
+                        extensions: [
+                            [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                            [$class: 'CloneOption', timeout: 30],
+                            [$class: 'SubmoduleOption', recursiveSubmodules: false], // False for non-simulator
+                        ],
+                        userRemoteConfigs: [
+			    [url: repo.url] // No refspec for non-simulator
+			] 
+                    ))
+                }
+            }
+        }
+    }
+
+    stage('Handle Depend-On') {
+        script {
+            dir('simulator/infra/builder') {
+                if (env.GERRIT_CHANGE_NUMBER) {
+                    sh "./handle-depend-on-instructions.sh '${WORKSPACE}' ${env.GERRIT_CHANGE_NUMBER} davidsaOpenu gerrit"
+                } else {
+                    sh 'echo Periodic run - no need for ./handle-depend-on-instructions.sh'
+                }
+            }
+        }
+    }
+
+    stage('Build and Test') {
+        dir('simulator/infra/builder') {
+            sh './run-ci.sh'
+        }
+    }
+
+    stage('Setup VM and Test Podman') {
+        script {
+        sh '''
+            # Set image name
+            IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-podman.img
+
+            # Download the image (bypass proxy)
+            wget --no-proxy http://192.114.0.189/$IMAGE_NAME
+
+            # Function to find free port
+            find_free_port() {
+                local port
+                for port in {2224..2299}; do
+                    if ! netstat -tuln | grep -q ":$port "; then
+                        echo $port
+                        return
+                    fi
+                done 
+                echo 2224  # fallback
+            }
+
+            # Get free TCP port
+            free_tcp_port=$(find_free_port)
+            echo "Using port: $free_tcp_port"
+
+            # Store variables for cleanup stage
+            echo $free_tcp_port > vm_port.txt
+            echo $IMAGE_NAME > vm_image.txt
+
+            # Start QEMU VM in background
+
+            qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE_NAME \\
+                -nic user,hostfwd=tcp::$free_tcp_port-:22 -nographic &
+            VM_PID=$!
+            echo $VM_PID > vm_pid.txt
+            echo "Started VM with PID: $VM_PID"
+
+            # Give VM a moment to start
+            sleep 5
+
+            # Check if VM process is still running
+            if ! kill -0 $VM_PID 2>/dev/null; then
+                echo "ERROR: VM process failed to start or crashed immediately"
+                echo "VM PID $VM_PID is not running"
+                exit 1
+            fi
+            echo "VM process is running, waiting for SSH connectivity..."
+
+            # Wait for VM to launch (check SSH connectivity)
+            echo "Waiting for VM to be ready..."
+            for i in {1..60}; do
+                if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "echo VM is ready" 2>/dev/null; then
+                    echo "VM is ready after $i attempts"
+                    break
+                fi
+                echo "Attempt $i: VM not ready yet, waiting..."
+                sleep 10
+            done
+
+            # Copy simulator folder to the VM 
+            echo "Copying simulator folder to VM..."
+            scp -o StrictHostKeyChecking=no -P $free_tcp_port -r simulator elk@localhost:~/simulator
+
+            echo "Copying logs folder to VM..."
+            scp -o StrictHostKeyChecking=no -P $free_tcp_port -r logs elk@localhost:~/logs
+
+            echo "Print with ls -R"
+            ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "ls -R"
+
+            # Execute podman command on the VM and show output
+            echo "Testing podman on VM..."
+            echo "==================== PODMAN OUTPUT ===================="
+            ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "podman run hello-world" || echo "Podman command failed"
+            echo "======================= END OUTPUT ====================="
+            echo "==================== START ELK ======================"
+            ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "cd ~/simulator/infra/ELK/; ./install_and_start_elk.sh ../../../logs ../ELK | true"
+            echo "======================= END OUTPUT ====================="
+        '''
+        }
+    }
+
+    stage('Cleanup') {
+        dir('simulator') {
+            sh 'echo Cleanup destory vm dont delete the initial ubuntu image'
         }
     }
 }
