@@ -127,7 +127,6 @@ def runPipeline() {
                     dir: 'simulator',
                     branch: params.GERRIT_BRANCH,
                     url: 'https://review.gerrithub.io/davidsaOpenu/simulator',
-                    useSubmodules: true
                 ],
                 [
                     dir: 'nvme-cli',
@@ -169,7 +168,7 @@ def runPipeline() {
                         extensions: [
                             [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
                             [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                            [$class: 'SubmoduleOption', recursiveSubmodules: true], // Always true for simulator
+                            [$class: 'SubmoduleOption', recursiveSubmodules: true],
                             [$class: 'CloneOption', timeout: 30],
                         ],
                         userRemoteConfigs: [
@@ -183,7 +182,9 @@ def runPipeline() {
                         extensions: [
                             [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
                             [$class: 'CloneOption', timeout: 30],
-                            [$class: 'SubmoduleOption', recursiveSubmodules: false], // False for non-simulator
+                            [$class: 'SubmoduleOption',
+                                      disableSubmodules: true,
+                                      recursiveSubmodules: false],
                         ],
                         userRemoteConfigs: [
 			    [url: repo.url] // No refspec for non-simulator
