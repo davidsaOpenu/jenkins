@@ -103,7 +103,10 @@ pipeline {
                         IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-docker.img
 
                         # Download the image (bypass proxy)
-                        wget --no-proxy http://192.114.0.189/$IMAGE_NAME
+                        # wget --no-proxy http://192.114.0.189/$IMAGE_NAME
+
+                        # Copy the image
+                        cp /home/davidsa/public_html/$IMAGE_NAME .
 
                         # Function to find free port
                         find_free_port() {
