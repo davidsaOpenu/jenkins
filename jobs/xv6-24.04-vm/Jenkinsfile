@@ -159,13 +159,13 @@ pipeline {
                         echo "Copying xv6 folder to VM..."
                         scp -o StrictHostKeyChecking=no -P $free_tcp_port -r xv6 student@localhost:~/xv6
 
-                        # Execute docker command on the VM and show output
+                        # Execute podman command on the VM and show output
                         echo "Testing docker on VM..."
                         echo "==================== Docker OUTPUT ===================="
                         ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "docker run hello-world" || echo "Docker command failed"
                         echo "======================= END OUTPUT ====================="
-                        echo "==================== START ELK ======================"
-                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "cd ~/xv6; ls -all"
+                        echo "==================== STRAT PODMAN CI ======================"
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "cd ~/xv6; ./podman-ci.sh"
                         echo "======================= END OUTPUT ====================="
                     '''
                 }
