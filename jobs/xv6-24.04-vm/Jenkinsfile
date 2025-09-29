@@ -100,7 +100,7 @@ pipeline {
                 script {
                     sh '''
                         # Set image name
-                        IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-docker.img
+                        IMAGE_NAME=ubuntu-24.04-server-cloudimg-amd64-podman.img
 
                         # Download the image (bypass proxy)
                         # wget --no-proxy http://192.114.0.189/$IMAGE_NAME
@@ -150,7 +150,7 @@ pipeline {
                         # Wait for VM to launch (check SSH connectivity)
                         echo "Waiting for VM to be ready..."
                         for i in {1..60}; do
-                            if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "echo VM is ready" 2>/dev/null; then
+                            if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "echo VM is ready" 2>/dev/null; then
                                 echo "VM is ready after $i attempts"
                                 break
                             fi
@@ -160,15 +160,15 @@ pipeline {
 
                         # Copy xv6 folder to the VM 
                         echo "Copying xv6 folder to VM..."
-                        scp -o StrictHostKeyChecking=no -P $free_tcp_port -r xv6 student@localhost:~/xv6
+                        scp -o StrictHostKeyChecking=no -P $free_tcp_port -r xv6 elk@localhost:~/xv6
 
                         # Execute podman command on the VM and show output
                         echo "Testing docker on VM..."
                         echo "==================== Docker OUTPUT ===================="
-                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "docker run hello-world" || echo "Docker command failed"
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "docker run hello-world" || echo "Docker command failed"
                         echo "======================= END OUTPUT ====================="
                         echo "==================== STRAT PODMAN CI ======================"
-                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port student@localhost "cd ~/xv6; ./podman-ci.sh"
+                        ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "cd ~/xv6; ./podman-ci.sh"
                         echo "======================= END OUTPUT ====================="
                     '''
                 }
