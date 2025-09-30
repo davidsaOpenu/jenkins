@@ -229,7 +229,7 @@ EOF" -a "$IMAGE"
     virt-customize --run-command "chmod +x /opt/$USERNAME/test-podman.sh" -a "$IMAGE"
     virt-customize --run-command "chown $USERNAME:$USERNAME /opt/$USERNAME/test-podman.sh" -a "$IMAGE"
     virt-customize --run-command "apt-get install -y build-essential jq expect" -a "$IMAGE"
-
+    virt-customize --run-command 'apt-get install -y gcc-multilib findutils qemu-system-x86' -a "$IMAGE"
 elif [ "$CONTAINER_RUNTIME" = "docker" ]; then
     # Create Docker testing script
     virt-customize --run-command "cat > /opt/$USERNAME/test-docker.sh << 'EOF'
