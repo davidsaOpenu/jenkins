@@ -130,7 +130,7 @@ pipeline {
 
                         # Start QEMU VM in background
 
-                        qemu-system-x86_64 -enable-kvm -m 2048 -smp 4 -hda $IMAGE_NAME \\
+                        qemu-system-x86_64 -enable-kvm -m 2048 -smp $(nproc) -hda $IMAGE_NAME \\
                             -nic user,hostfwd=tcp::$free_tcp_port-:22 -nographic &
                         VM_PID=$!
                         echo $VM_PID > vm_pid.txt
