@@ -105,40 +105,5 @@ pipeline {
             }
         }
     }
-
-    post {
-        always {
-            script {
-                sh '''
-                    echo "==================== VM CLEANUP ===================="
-                    
-                    # Cleanup VM if PID file exists
-                    if [ -f vm_pid.txt ]; then
-                        VM_PID=$(cat vm_pid.txt)
-                        echo "Cleaning up VM with PID: $VM_PID"
-                        kill $VM_PID || true
-                        wait $VM_PID 2>/dev/null || true
-                        rm -f vm_pid.txt
-                    else
-                        echo "No VM PID file found - VM may have already been cleaned up"
-                    fi
-                    
-                    # Remove the image file if it exists
-                    if [ -f vm_image.txt ]; then
-                        IMAGE_NAME=$(cat vm_image.txt)
-                        echo "Removing image file: $IMAGE_NAME"
-                        rm -f $IMAGE_NAME
-                        rm -f vm_image.txt
-                    fi
-                    
-                    # Clean up port file
-                    rm -f vm_port.txt
-                    
-                    echo "VM cleanup completed"
-                    echo "==================== END CLEANUP ===================="
-                '''
-            }
-        }
-    }
 }
 
