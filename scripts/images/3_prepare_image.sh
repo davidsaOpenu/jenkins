@@ -88,7 +88,7 @@ if [ "$CONTAINER_RUNTIME" = "podman" ]; then
     virt-customize --run-command 'add-apt-repository -y ppa:projectatomic/ppa || echo "PPA may not be available, trying alternative..."' -a "$IMAGE"
 
     # Install Podman and required packages for rootless operation
-    virt-customize --run-command 'apt-get install -y podman uidmap slirp4netns crun fuse-overlayfs' -a "$IMAGE"
+    virt-customize --run-command 'apt-get install -y podman podman-compose uidmap slirp4netns crun fuse-overlayfs' -a "$IMAGE"
 
     # Configure subuid and subgid properly
     virt-customize --run-command "grep -q '^$USERNAME:' /etc/subuid || echo '$USERNAME:100000:65536' >> /etc/subuid" -a "$IMAGE"
