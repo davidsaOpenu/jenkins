@@ -298,7 +298,7 @@ def runPipeline() {
                 ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "podman run hello-world" || echo "Podman command failed"
                 echo "======================= END OUTPUT ====================="
                 echo "==================== START ELK ======================"
-                ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "cd ~/simulator/infra/ELK/; ./install_and_start_elk.sh ../../../logs ../ELK | true"
+                ssh -o StrictHostKeyChecking=no -p $free_tcp_port elk@localhost "cd ~/simulator/infra/ELK/; ./install_and_start_elk.sh ../../../logs ../ELK"
                 echo "======================= END OUTPUT ====================="
             '''
             }
