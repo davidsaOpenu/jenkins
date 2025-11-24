@@ -221,12 +221,12 @@ def runPipeline() {
 
     stage('Setup VM and Test Podman') {
         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            script {
-            sh '''
+            dir('simulator/infra/ELK') {
+              sh '''
                 echo "Testing podman on VM..."
                 echo "==================== BOOT PODMAN VM  ===================="
-                cd ~/simulator/infra/ELK/; ./test_on_podman_VM.sh
-            '''
+                ./test_on_podman_VM.sh
+              '''
             }
         }
     }
