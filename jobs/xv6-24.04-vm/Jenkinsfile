@@ -40,7 +40,7 @@ pipeline {
                 numToKeepStr: '24'
             )
         )
-        timeout(time: 220, unit: 'MINUTES')
+        timeout(time: 15, unit: 'MINUTES')
         timestamps()
         disableConcurrentBuilds()
     }
