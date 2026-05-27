@@ -66,7 +66,7 @@ echo "Installing required tools ..."
 echo "Updating package lists..."
 apt-get -o Acquire::http::Proxy="false" -o Acquire::https::Proxy="false" update -y
 
-# Install required packages with explicit no-proxy options  
+# Install required packages with explicit no-proxy options
 echo "Installing cloud-utils-growpart, e2fsprogs, parted..."
 apt-get -o Acquire::http::Proxy="false" -o Acquire::https::Proxy="false" install -y cloud-utils-growpart e2fsprogs parted
 

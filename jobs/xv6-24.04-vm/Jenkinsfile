@@ -6,8 +6,8 @@ pipeline {
             customUrl: '',
             gerritProjects: [[
                 branches: [[
-                    compareType: 'PLAIN', 
-                    pattern: "${params.GERRIT_BRANCH}" 
+                    compareType: 'PLAIN',
+                    pattern: "${params.GERRIT_BRANCH}"
                 ]],
                 compareType: 'PLAIN',
                 disableStrictForbiddenFileVerification: false,
@@ -25,7 +25,7 @@ pipeline {
                 changeMerged(),
                 changeRestored(),
                 commentAddedContains(
-                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' + 
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' +
                     '(\\n\\n)?\\s*(recheck)'
                 )
             ]
@@ -36,7 +36,7 @@ pipeline {
     options {
         buildDiscarder(
             logRotator(
-                daysToKeepStr: '14', 
+                daysToKeepStr: '14',
                 numToKeepStr: '24'
             )
         )
@@ -47,13 +47,13 @@ pipeline {
 
     parameters {
         string(
-            name: 'GERRIT_REFSPEC', 
-            defaultValue: 'refs/heads/master', 
+            name: 'GERRIT_REFSPEC',
+            defaultValue: 'refs/heads/master',
             description: ''
         )
         string(
-            name: 'GERRIT_BRANCH', 
-            defaultValue: 'master', 
+            name: 'GERRIT_BRANCH',
+            defaultValue: 'master',
             description: ''
         )
     }
@@ -66,7 +66,7 @@ pipeline {
 
                     def repos = [
                         [
-                            dir: 'xv6', 
+                            dir: 'xv6',
                             branch: params.GERRIT_BRANCH,
                             url: 'https://review.gerrithub.io/davidsaOpenu/xv6',
                             useSubmodules: true
@@ -106,4 +106,3 @@ pipeline {
         }
     }
 }
-

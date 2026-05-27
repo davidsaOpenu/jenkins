@@ -36,7 +36,7 @@ pipeline {
     options {
         buildDiscarder(
             logRotator(
-                daysToKeepStr: '14', 
+                daysToKeepStr: '14',
                 numToKeepStr: '24'
             )
         )
@@ -45,13 +45,13 @@ pipeline {
 
     parameters {
         string(
-            name: 'GERRIT_REFSPEC', 
-            defaultValue: 'refs/heads/master', 
+            name: 'GERRIT_REFSPEC',
+            defaultValue: 'refs/heads/master',
             description: ''
         )
         string(
-            name: 'GERRIT_BRANCH', 
-            defaultValue: 'master', 
+            name: 'GERRIT_BRANCH',
+            defaultValue: 'master',
             description: ''
         )
     }
@@ -89,7 +89,7 @@ pipeline {
             script {
                 sh '''
                     echo "==================== VM CLEANUP ===================="
-                    
+
                     if [ -f vm_pid.txt ]; then
                         VM_PID=$(cat vm_pid.txt)
                         echo "Cleaning up VM with PID: $VM_PID"
@@ -189,7 +189,7 @@ def runPipeline() {
                             ],
                             userRemoteConfigs: [
 			        [url: repo.url] // No refspec for non-simulator
-			    ] 
+			    ]
                         ))
                     }
                 }

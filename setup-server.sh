@@ -40,7 +40,7 @@ sudo systemctl status docker
 
 
 ##############################################################################
-# Workaround  https://docs.docker.com/compose/install/#install-compose 
+# Workaround  https://docs.docker.com/compose/install/#install-compose
 sudo rm -r /usr/local/bin/docker-compose
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
@@ -79,7 +79,7 @@ sudo apt-get -y install jenkins
 
 # Configure Global Security
 #     Security Realm
-#         Unix user/group database 
+#         Unix user/group database
 #     Authorization
 #         Allow anonymous read access (TODO: matrix based security)
 
@@ -98,8 +98,8 @@ sudo apt-get -y install jenkins
 # indication. Then restart your jenkins server and make sure that the gerrit server
 # verification status become green (seems there is a bug with the stutus indicatior
 # that remains red untill the next restart)
-# 
-# To test the connecttion from the CLI 
+#
+# To test the connecttion from the CLI
 #       ssh -p 29418 gerritUserName@review.gerrithub.io gerrit ls-projects
 # other gerrit commands: https://review.gerrithub.io/Documentation/cmd-index.html
 
@@ -124,7 +124,7 @@ sudo \
                     --httpPort=8080 \
                     --prefix=/jenkins
 
-# or 
+# or
 sudo \
 /usr/bin/java \
  -Djava.awt.headless=true \
@@ -137,7 +137,5 @@ sudo \
 # nohup /usr/bin/java -jar /usr/share/jenkins/jenkins.war &> jenkins.log &
 
 ##############################################################################
-# 
+#
 # iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
-
-

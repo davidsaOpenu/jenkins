@@ -82,7 +82,7 @@ virt-customize --run-command 'apt-get install -y nfs-common || echo "NFS install
 
 if [ "$CONTAINER_RUNTIME" = "podman" ]; then
     echo "Installing Podman..."
-    
+
     # Add Podman repository for Ubuntu (official Podman PPA)
     virt-customize --run-command 'apt-get install -y software-properties-common' -a "$IMAGE"
     virt-customize --run-command 'add-apt-repository -y ppa:projectatomic/ppa || echo "PPA may not be available, trying alternative..."' -a "$IMAGE"
@@ -141,26 +141,26 @@ EOF" -a "$IMAGE"
     virt-customize --run-command "apt install -y podman-compose" -a "$IMAGE"
 elif [ "$CONTAINER_RUNTIME" = "docker" ]; then
     echo "Installing Docker..."
-    
+
     # Install Docker's official GPG key
     virt-customize --run-command 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg' -a "$IMAGE"
-    
+
     # Add Docker repository
     virt-customize --run-command 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null' -a "$IMAGE"
-    
+
     # Update package lists with Docker repository
     virt-customize --run-command 'apt-get update -y' -a "$IMAGE"
-    
+
     # Install Docker packages
     virt-customize --run-command 'apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin' -a "$IMAGE"
-    
+
     # Add user to docker group
     virt-customize --run-command "usermod -aG docker $USERNAME" -a "$IMAGE"
-    
+
     # Enable and start Docker service
     virt-customize --run-command 'systemctl enable docker' -a "$IMAGE"
     virt-customize --run-command 'systemctl enable containerd' -a "$IMAGE"
-    
+
     # Configure Docker daemon for better security and performance
     virt-customize --run-command 'mkdir -p /etc/docker' -a "$IMAGE"
     virt-customize --run-command 'cat > /etc/docker/daemon.json << EOF
