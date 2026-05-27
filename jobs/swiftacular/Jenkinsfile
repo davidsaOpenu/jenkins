@@ -98,7 +98,7 @@ pipeline {
             }
         }
 
-        stage('Pre-cleanup') {
+        stage('Pre-build cleanup') {
             steps {
                 script {
                     dir('swiftacular') {
@@ -108,15 +108,23 @@ pipeline {
             }
         }
 
-        stage('Build and Test') {
+        stage('Provision VMs') {
             steps {
                 dir('swiftacular'){
-                    sh './bootstrap_swift_with_monitoring.sh'
+                    sh './2_provision_VMs.sh'
                 }
             }
         }
 
-        stage('Post-cleanup') {
+        stage('Build and Test') {
+            steps {
+                dir('swiftacular'){
+                    sh './3_deploy_swift_with_monitoring.sh'
+                }
+            }
+        }
+
+        stage('Post-build cleanup') {
             steps {
                 script {
                     dir('swiftacular') {
