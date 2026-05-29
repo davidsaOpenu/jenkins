@@ -21,7 +21,6 @@ pipeline {
                     excludeNoCodeChange: true,
                     excludeWip: true
                 ),
-                draftPublished(),
                 changeMerged(),
                 changeRestored(),
                 commentAddedContains(
