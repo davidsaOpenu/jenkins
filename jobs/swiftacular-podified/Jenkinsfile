@@ -39,9 +39,7 @@ pipeline {
                 numToKeepStr: '24'
             )
         )
-        timeout(time: 220, unit: 'MINUTES')
         timestamps()
-        disableConcurrentBuilds()
     }
 
     parameters {
@@ -58,102 +56,25 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Acquire lock') {
             steps {
                 script {
-                    def repos = [
-                        [
-                            dir: 'swiftacular',
-                            branch: params.GERRIT_BRANCH,
-                            url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
-                            useSubmodules: true
-                        ],
-                    ]
-
-                    sh "ls; rm -rf *; ls"
-                    for (repo in repos) {
-                        if (repo.dir == 'swiftacular') {
-                            checkout(scmGit(
-                                branches: [[name: repo.branch]],
-                                extensions: [
-                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                                    [$class: 'SubmoduleOption', recursiveSubmodules: true],
-                                    [$class: 'CloneOption', timeout: 20],
-                                ],
-                                userRemoteConfigs: [
-                                    [refspec: params.GERRIT_REFSPEC,
-                                     url: repo.url]
-                                ]
-                            ))
-                        } else {
-                            checkout(scmGit(
-                                branches: [[name: repo.branch]],
-                                extensions: [
-                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    [$class: 'CloneOption', timeout: 20],
-                                    [$class: 'SubmoduleOption', recursiveSubmodules: false],
-                                ],
-                                userRemoteConfigs: [
-                                    [url: repo.url]
-                                ]
-                            ))
+                    if (env.GERRIT_CHANGE_ID) {
+                        lock(resource: "job-${env.JOB_NAME}") {
+                            lock(resource: "gerrit-${env.GERRIT_CHANGE_ID}", inversePrecedence: true) {
+                                echo "Acquired locks: job=${env.JOB_NAME}, change=${env.GERRIT_CHANGE_ID}"
+                                timeout(time: 220, unit: 'MINUTES') {
+                                    runPipeline()
+                                }
+                            }
                         }
-
-
-                    }
-                }
-            }
-        }
-
-        stage('Pre-build cleanup') {
-            steps {
-                script {
-                    dir('swiftacular') {
-                        sh './kube_deploy/scripts/teardown-cluster.sh'
-                    }
-                }
-            }
-        }
-
-        stage('Bootstrap Cluster') {
-            steps {
-                dir('swiftacular'){
-                    sh './kube_deploy/scripts/bootstrap-cluster.sh'
-                }
-            }
-        }
-
-        stage('Build Images') {
-            steps {
-                dir('swiftacular'){
-                    sh './kube_deploy/scripts/build-images.sh'
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                dir('swiftacular'){
-                    sh './kube_deploy/scripts/deploy.sh --skip-bootstrap --skip-build --skip-smoke'
-                }
-            }
-        }
-
-        stage('Smoke Test') {
-            steps {
-                dir('swiftacular'){
-                    sh './kube_deploy/scripts/smoke-test.sh'
-                }
-            }
-        }
-
-
-        stage('Post-build cleanup') {
-            steps {
-                script {
-                    dir('swiftacular') {
-                        sh './kube_deploy/scripts/teardown-cluster.sh'
+                    } else {
+                        lock(resource: "job-${env.JOB_NAME}") {
+                            echo "Acquired lock: job=${env.JOB_NAME} (non-Gerrit build)"
+                            timeout(time: 220, unit: 'MINUTES') {
+                                runPipeline()
+                            }
+                        }
                     }
                 }
             }
@@ -161,12 +82,112 @@ pipeline {
     }
 
     post {
-      always {
-          script {
-            dir('swiftacular') {
-              sh './kube_deploy/scripts/teardown-cluster.sh'
+        always {
+            script {
+                dir('swiftacular') {
+                    sh './kube_deploy/scripts/teardown-cluster.sh'
+                }
             }
-          }
-      }
-   }
+        }
+    }
+}
+
+def runPipeline() {
+    stage('Checkout') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            script {
+                def repos = [
+                    [
+                        dir: 'swiftacular',
+                        branch: params.GERRIT_BRANCH,
+                        url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
+                        useSubmodules: true
+                    ],
+                ]
+
+                sh "ls; rm -rf *; ls"
+                for (repo in repos) {
+                    if (repo.dir == 'swiftacular') {
+                        checkout(scmGit(
+                            branches: [[name: repo.branch]],
+                            extensions: [
+                                [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                                [$class: 'SubmoduleOption', recursiveSubmodules: true],
+                                [$class: 'CloneOption', timeout: 20],
+                            ],
+                            userRemoteConfigs: [
+                                [refspec: params.GERRIT_REFSPEC,
+                                 url: repo.url]
+                            ]
+                        ))
+                    } else {
+                        checkout(scmGit(
+                            branches: [[name: repo.branch]],
+                            extensions: [
+                                [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                [$class: 'CloneOption', timeout: 20],
+                                [$class: 'SubmoduleOption', recursiveSubmodules: false],
+                            ],
+                            userRemoteConfigs: [
+                                [url: repo.url]
+                            ]
+                        ))
+                    }
+                }
+            }
+        }
+    }
+
+    stage('Pre-build cleanup') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            script {
+                dir('swiftacular') {
+                    sh './kube_deploy/scripts/teardown-cluster.sh'
+                }
+            }
+        }
+    }
+
+    stage('Bootstrap Cluster') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            dir('swiftacular') {
+                sh './kube_deploy/scripts/bootstrap-cluster.sh'
+            }
+        }
+    }
+
+    stage('Build Images') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            dir('swiftacular') {
+                sh './kube_deploy/scripts/build-images.sh'
+            }
+        }
+    }
+
+    stage('Deploy') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            dir('swiftacular') {
+                sh './kube_deploy/scripts/deploy.sh --skip-bootstrap --skip-build --skip-smoke'
+            }
+        }
+    }
+
+    stage('Smoke Test') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            dir('swiftacular') {
+                sh './kube_deploy/scripts/smoke-test.sh'
+            }
+        }
+    }
+
+    stage('Post-build cleanup') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            script {
+                dir('swiftacular') {
+                    sh './kube_deploy/scripts/teardown-cluster.sh'
+                }
+            }
+        }
+    }
 }
