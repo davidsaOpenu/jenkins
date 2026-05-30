@@ -12,6 +12,10 @@ pipeline {
                 compareType: 'PLAIN',
                 disableStrictForbiddenFileVerification: false,
                 pattern: 'davidsaOpenu/swiftacular'
+                filePaths: [[
+                    compareType: 'ANT',
+                    pattern: 'kube_deploy/**'
+                ]]
             ]],
             serverName: 'review.gerrithub.io',
             triggerOnEvents: [
