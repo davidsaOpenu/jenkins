@@ -11,11 +11,11 @@ pipeline {
                 ]],
                 compareType: 'PLAIN',
                 disableStrictForbiddenFileVerification: false,
-                pattern: 'davidsaOpenu/swiftacular'
+                pattern: 'davidsaOpenu/swiftacular',
                 filePaths: [[
                     compareType: 'ANT',
                     pattern: '**'
-                    ]],
+                ]],
                 forbiddenFilePaths: [[
                     compareType: 'ANT',
                     pattern: 'kube_deploy/**'
@@ -102,86 +102,82 @@ pipeline {
     }
 }
 
+def protectedStage(String name, Closure body) {
+    stage(name) {
+        if (currentBuild.result == 'ABORTED') {
+            echo "Skipping stage '${name}' — build was aborted"
+            return
+        }
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            body()
+        }
+    }
+}
+
 def runPipeline() {
-    stage('Checkout') {
-        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            script {
-                def repos = [
-                    [
-                        dir: 'swiftacular',
-                        branch: params.GERRIT_BRANCH,
-                        url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
-                        useSubmodules: true
+    protectedStage('Checkout') {
+        def repos = [
+            [
+                dir: 'swiftacular',
+                branch: params.GERRIT_BRANCH,
+                url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
+                useSubmodules: true
+            ],
+        ]
+
+        sh "ls; rm -rf *; ls"
+        for (repo in repos) {
+            if (repo.dir == 'swiftacular') {
+                checkout(scmGit(
+                    branches: [[name: repo.branch]],
+                    extensions: [
+                        [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                        [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                        [$class: 'SubmoduleOption', recursiveSubmodules: true],
+                        [$class: 'CloneOption', timeout: 20],
                     ],
-                ]
-
-                sh "ls; rm -rf *; ls"
-                for (repo in repos) {
-                    if (repo.dir == 'swiftacular') {
-                        checkout(scmGit(
-                            branches: [[name: repo.branch]],
-                            extensions: [
-                                [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                                [$class: 'SubmoduleOption', recursiveSubmodules: true],
-                                [$class: 'CloneOption', timeout: 20],
-                            ],
-                            userRemoteConfigs: [
-                                [refspec: params.GERRIT_REFSPEC,
-                                 url: repo.url]
-                            ]
-                        ))
-                    } else {
-                        checkout(scmGit(
-                            branches: [[name: repo.branch]],
-                            extensions: [
-                                [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                [$class: 'CloneOption', timeout: 20],
-                                [$class: 'SubmoduleOption', recursiveSubmodules: false],
-                            ],
-                            userRemoteConfigs: [
-                                [url: repo.url]
-                            ]
-                        ))
-                    }
-                }
+                    userRemoteConfigs: [
+                        [refspec: params.GERRIT_REFSPEC,
+                         url: repo.url]
+                    ]
+                ))
+            } else {
+                checkout(scmGit(
+                    branches: [[name: repo.branch]],
+                    extensions: [
+                        [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                        [$class: 'CloneOption', timeout: 20],
+                        [$class: 'SubmoduleOption', recursiveSubmodules: false],
+                    ],
+                    userRemoteConfigs: [
+                        [url: repo.url]
+                    ]
+                ))
             }
         }
     }
 
-    stage('Pre-build cleanup') {
-        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            script {
-                dir('swiftacular') {
-                    sh './cleanup.sh'
-                }
-            }
+    protectedStage('Pre-build cleanup') {
+        dir('swiftacular') {
+            sh './cleanup.sh'
         }
     }
 
-    stage('Provision VMs') {
-        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            dir('swiftacular') {
-                sh './2_provision_VMs.sh'
-            }
+    protectedStage('Provision VMs') {
+        dir('swiftacular') {
+            sh './2_provision_VMs.sh'
         }
     }
 
-    stage('Build and Test') {
-        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            dir('swiftacular') {
-                sh './3_deploy_swift_with_monitoring.sh'
-            }
+    protectedStage('Build and Test') {
+        dir('swiftacular') {
+            sh './3_deploy_swift_with_monitoring.sh'
         }
     }
 
-    stage('Post-build cleanup') {
-        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            script {
-                dir('swiftacular') {
-                    sh './cleanup.sh'
-                }
-            }
+    protectedStage('Post-build cleanup') {
+        dir('swiftacular') {
+            sh './cleanup.sh'
         }
     }
 }
