@@ -208,6 +208,12 @@ def runPipeline() {
         dir('simulator/infra/builder') {
             if (env.GERRIT_CHANGE_NUMBER) {
                 sh "./handle-depend-on-instructions.sh '${WORKSPACE}' ${env.GERRIT_CHANGE_NUMBER} davidsaOpenu gerrit"
+                try {
+                  sh "cd ../.. && git fetch --all && git rebase origin/master"
+                } catch (e) {
+                  gerritReview labels: [Verified: -1], message: "Rebase onto origin/master failed — please rebase your change.\nBuild: ${env.BUILD_URL}"
+                  throw e
+                }
             } else {
                 sh 'echo Periodic run - no need for ./handle-depend-on-instructions.sh'
             }
