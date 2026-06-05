@@ -40,6 +40,7 @@ pipeline {
             )
         )
         timestamps()
+        jobPriority(4)
     }
 
     parameters {
