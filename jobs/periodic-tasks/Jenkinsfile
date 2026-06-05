@@ -15,7 +15,6 @@ pipeline {
         timeout(time: 10, unit: 'MINUTES')
         timestamps()
         disableConcurrentBuilds()
-        jobPriority(1)
     }
 
 

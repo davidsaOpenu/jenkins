@@ -44,7 +44,6 @@ pipeline {
             )
         )
         timestamps()
-        jobPriority(3)
     }
 
     parameters {
