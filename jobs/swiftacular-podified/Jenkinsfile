@@ -1,3 +1,7 @@
+properties([
+    [$class: 'PriorityJobProperty', priority: 3]
+])
+
 pipeline {
     agent any
 
