@@ -41,6 +41,62 @@ pipeline {
                 }
             }
         }
+
+        stage('Extract Pipeline Failure Reasons') {
+            steps {
+                script {
+                    import jenkins.model.Jenkins
+                    import org.jenkinsci.plugins.workflow.job.WorkflowJob
+                    import hudson.model.Result
+
+                    def getFailureReason = { build ->
+                        if (build.result == Result.SUCCESS) return "Success"
+                        if (build.result == Result.ABORTED) return "Aborted by user/system"
+
+                        // Check build causes (e.g., SCM trigger, upstream, user)
+                        def causes = build.getCauses()
+                        def causeDesc = causes ? causes.collect { it.getShortDescription() }.join(", ") : "Unknown cause"
+
+                        // Attempt to parse Build Actions for errors (like Pipeline stage errors)
+                        def actionError = ""
+                        build.getActions().each { action ->
+                            if (action.class.name.contains("Flow Causes") || action.class.name.contains("ErrorAction")) {
+                                actionError += " | Error: ${action.toString()}"
+                            }
+                        }
+
+                        // Fallback to checking the last few lines of console log for common failures
+                        def log = build.getLog(30).join("\n")
+                        def reason = "Failed. Cause: ${causeDesc}${actionError}"
+
+                        if (log.contains("fatal") || log.contains("Error:")) {
+                            reason += " | Check console for fatal/error markers."
+                        }
+
+                        return reason
+                    }
+
+                    println("=== Extracting Failure Reasons for last 14 builds of Pipeline Jobs ===")
+
+                    Jenkins.instance.getAllItems(WorkflowJob.class).each { job ->
+                        println("\nJob: ${job.fullName}")
+
+                        def builds = job.getBuilds().limit(14)
+
+                        builds.each { build ->
+                            def status = build.result ?: "RUNNING"
+                            if (status != Result.SUCCESS) {
+                                def reason = getFailureReason(build)
+                                println("  -> Build #${build.number} [${status}]: ${reason}")
+                            }
+                        }
+                    }
+
+                    println("\n=== Extraction Complete ===")
+                }
+            }
+        }
+
         stage('Stop docker containers run > 5h') {
             steps {
                 script {
