@@ -14,7 +14,7 @@ pipeline {
                     pattern: "${params.GERRIT_BRANCH}"
                 ]],
                 compareType: 'PLAIN',
-                disableStrictForbiddenFileVerification: false,
+                disableStrictForbiddenFileVerification: true,
                 pattern: 'davidsaOpenu/swiftacular',
                 filePaths: [[
                     compareType: 'ANT',
