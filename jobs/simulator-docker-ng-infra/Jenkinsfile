@@ -60,6 +60,17 @@ pipeline {
     }
 
     stages {
+        stage('Cancel outdated patchsets') {
+            steps {
+                script {
+                    // Only apply cancellation logic for Gerrit-triggered builds
+                    if (env.GERRIT_CHANGE_NUMBER) {
+                        def changeNum = env.GERRIT_CHANGE_NUMBER.toInteger()
+                        milestone(changeNum)  // older builds for same change get aborted here
+                    }
+                }
+            }
+        }
         stage('Acquire lock') {
             steps {
                 script {
