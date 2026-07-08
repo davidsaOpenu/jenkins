@@ -1,0 +1,4 @@
+---
+- name: Restart jenkins
+  ansible.builtin.command: systemctl restart jenkins --no-block
+  become: true
