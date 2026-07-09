@@ -1,12 +1,10 @@
 vault.yml
 vault-xv6.yml
-part2/central_setup/students.yaml
+central_deploy/students.yaml
+central_deploy/students_credentials.yaml
 Vagrantfile-xv6
 deploy-xv6.sh
-part2/central_setup/reset_mock_central.sh
-part2/central_setup/set_job_inline.sh
 setup_local_test_routing.sh
-local_test_deploy.sh
 start_git_daemon.sh
 local_test.sh
 local_test_env.sh
