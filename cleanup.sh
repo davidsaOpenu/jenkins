@@ -25,5 +25,22 @@ fi
 VAGRANTFILE="${REPO_ROOT}/central_deploy/Vagrantfile.jenkins"
 VM_NAME="jenkins-01"
 
+# Vagrant's local .vagrant/ state (which holds the domain's ID) lives relative
+# to cwd, not next to VAGRANTFILE — cd there or vagrant destroy silently finds
+# nothing to do, leaving the real libvirt domain orphaned.
+cd "$REPO_ROOT"
+
 echo "→ Tearing down ${VM_NAME}..."
 VAGRANT_VAGRANTFILE="$VAGRANTFILE" vagrant destroy "$VM_NAME" -f
+
+# Belt-and-braces: if the exact domain vagrant-libvirt would have named this
+# VM still exists (e.g. it was created under a workspace that's since been
+# wiped, so Vagrant's own local state never knew about it), remove it
+# directly — by exact name only, so this can never touch another VM sharing
+# this libvirt host.
+DOMAIN_NAME="$(basename "$REPO_ROOT")_${VM_NAME}"
+if virsh dominfo "$DOMAIN_NAME" &>/dev/null; then
+    echo "→ Removing stale libvirt domain '${DOMAIN_NAME}'..."
+    virsh destroy "$DOMAIN_NAME" 2>/dev/null || true
+    virsh undefine "$DOMAIN_NAME" --remove-all-storage 2>/dev/null || true
+fi

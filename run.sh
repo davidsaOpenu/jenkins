@@ -1,30 +1,40 @@
 #!/usr/bin/env bash
 # Builds a fresh, fully-configured Jenkins from scratch and proves the
-# Gerrit trigger wiring actually works (see vault_dummy_change_number below
-# for the two ways it verifies this). Run daily as a continuous self-check
-# — and this same script is what stands up the actual replacement if the
-# OpenU central Jenkins ever goes down.
+# Gerrit trigger wiring actually works. Two modes:
 #
-# The VM is always left running after a confirmed-good run — it's ready to
-# serve as the central Jenkins immediately, not just a disposable test copy.
-# Use cleanup.sh separately when you actually want to tear it down.
+#   (default)      Self-check — no vault, no real secrets anywhere: hardcoded
+#                   admin password, a throwaway generated Gerrit SSH key that
+#                   never actually connects to GerritHub, and Step 7's
+#                   simulated-event path. This is what cron and Gerrit-
+#                   triggered runs use — no human present, nothing to expose.
+#   --real-gerrit   Reads central_deploy/roles/jenkins/vars/vault.yml
+#                   (ansible-vault encrypted) for the real admin password and
+#                   a real GerritHub-registered SSH key, connects for real,
+#                   and optionally pushes a real patchset (see
+#                   vault_dummy_change_number below). For an instructor
+#                   manually standing up a real replacement.
 #
-# Non-interactive (cron/Gerrit): export VAULT_PASSWORD_FILE=/path/to/vault_pass
-# Interactive (manual recovery run): just run it, you'll be prompted once.
+# The VM is always left running after a confirmed-good run — ready to serve
+# as the central Jenkins immediately (--real-gerrit), or just there to
+# inspect (self-check). Use cleanup.sh separately to tear it down.
 #
-# vault_dummy_change_number (in central_deploy/roles/jenkins/vars/vault.yml)
-# controls Step 7's verification method:
+# Non-interactive --real-gerrit (cron/Gerrit): export VAULT_PASSWORD_FILE=/path/to/vault_pass
+# Interactive --real-gerrit: just run it, you'll be prompted once.
+#
+# vault_dummy_change_number (in vault.yml, --real-gerrit only) controls Step
+# 7's verification method:
 #   - set to a permanent Gerrit change reserved on davidsaOpenu/swiftacular:
 #     pushes a fresh, real patchset onto it to exercise the actual Gerrit
 #     trigger wiring end-to-end. (Not a comment — gerrit-trigger silently
 #     skips comments authored by its own configured user to avoid feedback
 #     loops from its own Verified votes; a new patchset has no such
 #     restriction, same as running `git review`.)
-#   - left blank: skips GerritHub entirely — instead injects a simulated
-#     patchset-created event directly into gerrit-trigger's own processing
-#     pipeline (via the Jenkins Script Console), so the same project/branch/
-#     event-type matching logic still gets exercised, with zero network
-#     calls to GerritHub and no dummy change needed anywhere.
+#   - left blank, or self-check mode: skips GerritHub entirely — instead
+#     injects a simulated patchset-created event directly into gerrit-
+#     trigger's own processing pipeline (via the Jenkins Script Console), so
+#     the same project/branch/event-type matching logic still gets
+#     exercised, with zero network calls to GerritHub and no dummy change
+#     needed anywhere.
 #
 # --local-repo (testing only): serve this checkout over a local git daemon
 # instead of pointing the dummy job at the real GerritHub master — lets you
@@ -55,22 +65,25 @@ if ! flock -n 200; then
 fi
 
 LOCAL_REPO=false
+REAL_GERRIT=false
 GIT_DAEMON_PID=""
 TMP_CLONE=""
 TMP_SSH_CFG=""
 TMP_INVENTORY=""
 TMP_VAULT_PASS=""
 TMP_GERRIT_KEY=""
+TMP_EXTRA_VARS=""
 TMP_COOKIE_JAR=""
 for arg in "$@"; do
     case "$arg" in
-        --local-repo) LOCAL_REPO=true ;;
+        --local-repo)  LOCAL_REPO=true ;;
+        --real-gerrit) REAL_GERRIT=true ;;
     esac
 done
 
 # Registered before anything (git daemon, VM relay) that could exit early,
 # so nothing started below this point can ever leak past a failure.
-trap 'rm -f "$TMP_SSH_CFG" "$TMP_INVENTORY" "$TMP_VAULT_PASS" "$TMP_GERRIT_KEY" "$TMP_COOKIE_JAR"; [[ -n "$TMP_CLONE" ]] && rm -rf "$TMP_CLONE"; [[ -n "$GIT_DAEMON_PID" ]] && kill "$GIT_DAEMON_PID" 2>/dev/null; true' EXIT
+trap 'rm -f "$TMP_SSH_CFG" "$TMP_INVENTORY" "$TMP_VAULT_PASS" "$TMP_GERRIT_KEY" "${TMP_GERRIT_KEY}.pub" "$TMP_EXTRA_VARS" "$TMP_COOKIE_JAR"; [[ -n "$TMP_CLONE" ]] && rm -rf "$TMP_CLONE"; [[ -n "$GIT_DAEMON_PID" ]] && kill "$GIT_DAEMON_PID" 2>/dev/null; true' EXIT
 
 title "Step 1/8 — Local setup"
 mkdir -p "${SCRIPT_DIR}/../swiftacular"
@@ -133,6 +146,20 @@ TMP_GERRIT_KEY=$(mktemp)
 TMP_COOKIE_JAR=$(mktemp)
 
 title "Step 2/8 — Spawn VM (${VM_NAME})"
+# vagrant-libvirt names the domain "<cwd-basename>_<machine-name>" (confirmed
+# in practice: "jenkins_jenkins-01", cwd here is always this checkout, cd'd to
+# above). Compute that exact name — never a pattern — so cleanup can only ever
+# touch this one domain, never another VM sharing this libvirt host.
+DOMAIN_NAME="$(basename "$SCRIPT_DIR")_${VM_NAME}"
+# A domain from an earlier run can outlive this workspace (e.g. cleanup.sh
+# never ran, or ran against different local Vagrant state) and block vagrant
+# up with a name collision. This script's job is a fresh build every time, so
+# clear any such leftover first rather than fail on it.
+if virsh dominfo "$DOMAIN_NAME" &>/dev/null; then
+    echo "→ Removing stale libvirt domain '${DOMAIN_NAME}' from a previous run..."
+    virsh destroy "$DOMAIN_NAME" 2>/dev/null || true
+    virsh undefine "$DOMAIN_NAME" --remove-all-storage 2>/dev/null || true
+fi
 VAGRANT_VAGRANTFILE="$VAGRANTFILE" vagrant up "$VM_NAME"
 
 title "Step 3/8 — Build Ansible inventory"
@@ -146,41 +173,73 @@ cat > "$TMP_INVENTORY" <<EOF
 ${VM_NAME} ansible_host=${HOST} ansible_port=${PORT} ansible_user=${SSH_USER} ansible_ssh_private_key_file=${KEY} ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 EOF
 
-title "Step 4/8 — Vault password"
-if [[ -n "${VAULT_PASSWORD_FILE:-}" ]]; then
-    cp "$VAULT_PASSWORD_FILE" "$TMP_VAULT_PASS"
-else
-    read -rsp "Ansible Vault password: " VAULT_PASS
-    echo
-    printf '%s' "$VAULT_PASS" > "$TMP_VAULT_PASS"
-fi
-
-title "Step 5/8 — Deploy Jenkins (plugins, Gerrit connection, jobs)"
+title "Step 4/8 — Credentials"
+ADMIN_USER="admin"
+VAULT_ARGS=()
 EXTRA_VARS=()
 [[ "$LOCAL_REPO" == "true" ]] && EXTRA_VARS+=(-e "dummy_job_repo_url=git://192.168.100.1/jenkins")
-ansible-playbook -i "$TMP_INVENTORY" -b \
-    --vault-password-file="$TMP_VAULT_PASS" \
-    "${EXTRA_VARS[@]}" \
-    "${DEPLOY_DIR}/deploy_jenkins.yml"
 
-ADMIN_USER="admin"
-VAULT_DATA=$(ansible-vault view "$VAULT_FILE" --vault-password-file="$TMP_VAULT_PASS")
-ADMIN_PASS=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin)['vault_jenkins_admin_password'])")
-GERRIT_USER=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin)['vault_gerrit_ssh_username'])")
-GERRIT_EMAIL=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin).get('vault_gerrit_email') or '')")
-DUMMY_CHANGE_NUMBER=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin).get('vault_dummy_change_number') or '')")
+if [[ "$REAL_GERRIT" == "true" ]]; then
+    if [[ -n "${VAULT_PASSWORD_FILE:-}" ]]; then
+        cp "$VAULT_PASSWORD_FILE" "$TMP_VAULT_PASS"
+    else
+        read -rsp "Ansible Vault password: " VAULT_PASS
+        echo
+        printf '%s' "$VAULT_PASS" > "$TMP_VAULT_PASS"
+    fi
+    VAULT_ARGS+=(--vault-password-file="$TMP_VAULT_PASS")
+    EXTRA_VARS+=(-e "vault_in_use=true" -e "gerrit_connect_on_startup=true")
+
+    VAULT_DATA=$(ansible-vault view "$VAULT_FILE" --vault-password-file="$TMP_VAULT_PASS")
+    ADMIN_PASS=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin)['vault_jenkins_admin_password'])")
+    GERRIT_USER=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin)['vault_gerrit_ssh_username'])")
+    GERRIT_EMAIL=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin).get('vault_gerrit_email') or '')")
+    DUMMY_CHANGE_NUMBER=$(echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin).get('vault_dummy_change_number') or '')")
+    echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin)['vault_gerrit_ssh_private_key'], end='')" > "$TMP_GERRIT_KEY"
+else
+    echo "→ Self-check mode: hardcoded admin password, throwaway Gerrit key, simulated event — no vault involved"
+    ADMIN_PASS="admin1234"
+    GERRIT_USER="selfcheck"
+    GERRIT_EMAIL=""
+    DUMMY_CHANGE_NUMBER=""
+    rm -f "$TMP_GERRIT_KEY"
+    ssh-keygen -q -t ed25519 -N "" -f "$TMP_GERRIT_KEY"
+
+    # Extra-vars file, not -e key=value, because the key's PEM content is
+    # multi-line — ansible-playbook still consumes it fine via -e "@file".
+    TMP_EXTRA_VARS=$(mktemp)
+    python3 - "$ADMIN_PASS" "$GERRIT_USER" "$TMP_GERRIT_KEY" "$TMP_EXTRA_VARS" <<'PYEOF'
+import sys, yaml
+admin_pass, gerrit_user, key_file, out_file = sys.argv[1:5]
+yaml.safe_dump({
+    'vault_in_use': False,
+    'gerrit_connect_on_startup': False,
+    'jenkins_admin_password': admin_pass,
+    'gerrit_ssh_username': gerrit_user,
+    'gerrit_ssh_private_key': open(key_file).read(),
+}, open(out_file, 'w'))
+PYEOF
+    EXTRA_VARS+=(-e "@${TMP_EXTRA_VARS}")
+fi
+chmod 600 "$TMP_GERRIT_KEY"
+
 if [[ -n "$DUMMY_CHANGE_NUMBER" && ! "$DUMMY_CHANGE_NUMBER" =~ ^[0-9]+$ ]]; then
     echo "✗ vault_dummy_change_number must be numeric, got: ${DUMMY_CHANGE_NUMBER}"
     exit 1
 fi
 # Only the real-Gerrit-push path needs a registered email — the simulated-
-# event path (blank vault_dummy_change_number) never touches GerritHub at all.
+# event path (blank vault_dummy_change_number, always true in self-check
+# mode) never touches GerritHub at all.
 if [[ -n "$DUMMY_CHANGE_NUMBER" && -z "$GERRIT_EMAIL" ]]; then
     echo "✗ vault_dummy_change_number is set but vault_gerrit_email is blank — required to push the verification patchset"
     exit 1
 fi
-echo "$VAULT_DATA" | python3 -c "import sys,yaml; print(yaml.safe_load(sys.stdin)['vault_gerrit_ssh_private_key'], end='')" > "$TMP_GERRIT_KEY"
-chmod 600 "$TMP_GERRIT_KEY"
+
+title "Step 5/8 — Deploy Jenkins (plugins, Gerrit connection, jobs)"
+ansible-playbook -i "$TMP_INVENTORY" -b \
+    "${VAULT_ARGS[@]}" \
+    "${EXTRA_VARS[@]}" \
+    "${DEPLOY_DIR}/deploy_jenkins.yml"
 
 title "Step 6/8 — Register Gerrit trigger (first build)"
 # Jenkins only registers a pipeline's triggers{} block after it has run once.
@@ -242,6 +301,20 @@ if [[ -z "$DUMMY_CHANGE_NUMBER" ]]; then
     # processing pipeline (GerritHandler.post) via the Jenkins Script Console —
     # exercises the actual project/branch/event-type matching logic, with zero
     # network calls to GerritHub and no dummy change required anywhere.
+
+    # Self-check never opens a real connection to GerritHub (noConnectionOnStartup),
+    # so nothing else here would ever notice a firewall/DNS/GerritHub outage.
+    # This needs no credentials — just proves the network path is still open.
+    if [[ "$REAL_GERRIT" != "true" ]]; then
+        echo "→ Checking network reachability to review.gerrithub.io:29418..."
+        if nc -z -w5 review.gerrithub.io 29418; then
+            echo "  ✓ reachable"
+        else
+            echo "✗ Cannot reach review.gerrithub.io:29418 — check firewall/DNS/GerritHub status"
+            exit 1
+        fi
+    fi
+
     echo "→ Injecting a simulated patchset-created event into gerrit-trigger..."
     CRUMB=$(get_crumb)
     EVENT_JSON=$(cat <<JSONEOF
@@ -328,6 +401,11 @@ echo "→ Build #${NUM} result: ${RESULT}"
 [[ "$RESULT" == "SUCCESS" ]] || { echo "✗ Dummy job did not succeed"; exit 1; }
 
 title "Step 8/8 — Done"
-echo "✓ Fresh Jenkins verified and ready to replace the central instance."
+if [[ "$REAL_GERRIT" == "true" ]]; then
+    echo "✓ Fresh Jenkins verified and ready to replace the central instance."
+else
+    echo "✓ Self-check passed — deploy automation and Gerrit trigger logic verified."
+    echo "  (admin1234 / throwaway Gerrit key — not meant to serve as production)"
+fi
 echo "  URL: ${JENKINS_URL}  user: ${ADMIN_USER}"
 echo "  (VM left running — use cleanup.sh to tear it down)"
