@@ -1,6 +1,21 @@
 ---
 - name: Load vault credentials
   ansible.builtin.include_vars: vault.yml
+  when: vault_in_use | default(true)
+  tags: always
+
+# This VM's networking is IPv4-only (libvirt NAT + a static private_network),
+# but plenty of real hosts (pkg.jenkins.io included) publish both A and AAAA
+# records. glibc's getaddrinfo() sorts IPv6 first by default, so anything
+# that tries addresses in that order gets an instant "Network is unreachable"
+# on the IPv6 attempt instead of falling through to the IPv4 one that would
+# have worked. Standard fix, not a workaround: tell the resolver to prefer
+# IPv4 (doesn't disable IPv6, just fixes the sort order).
+- name: Prefer IPv4 over IPv6 for outbound connections (guest has no IPv6 route)
+  ansible.builtin.lineinfile:
+    path: /etc/gai.conf
+    line: "precedence ::ffff:0:0/96  100"
+    create: true
   tags: always
 
 - name: Install Java 21
