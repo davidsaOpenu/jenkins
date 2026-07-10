@@ -1,6 +1,7 @@
 ---
 - name: Load vault credentials
   ansible.builtin.include_vars: vault.yml
+  when: vault_in_use | default(true)
   tags: always
 
 - name: Install Java 21
