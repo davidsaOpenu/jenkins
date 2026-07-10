@@ -1,6 +1,33 @@
 ---
 - name: Load vault credentials
   ansible.builtin.include_vars: vault.yml
+  when: vault_in_use | default(true)
+  tags: always
+
+# This VM's networking is IPv4-only (libvirt NAT + a static private_network),
+# but plenty of real hosts (pkg.jenkins.io included) publish both A and AAAA
+# records. glibc's getaddrinfo() sorts IPv6 first by default, so anything
+# that tries addresses in that order gets an instant "Network is unreachable"
+# on the IPv6 attempt instead of falling through to the IPv4 one that would
+# have worked. Standard fix, not a workaround: tell the resolver to prefer
+# IPv4 (doesn't disable IPv6, just fixes the sort order).
+- name: Prefer IPv4 over IPv6 for outbound connections (guest has no IPv6 route)
+  ansible.builtin.lineinfile:
+    path: /etc/gai.conf
+    line: "precedence ::ffff:0:0/96  100"
+    create: true
+  tags: always
+
+# Belt-and-braces on top of the gai.conf fix above: that only reorders
+# candidates for whatever respects glibc's getaddrinfo() sort weighting.
+# dnf's own fetches go through librepo (its own curl-based client, not
+# necessarily bound by the same sort order), so force it at the tool level
+# too — no ambiguity left about which family gets tried.
+- name: Force dnf to resolve IPv4 only (belt-and-braces, guest has no IPv6 route)
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/dnf.conf
+    line: "ip_resolve=4"
+    insertafter: "^\\[main\\]"
   tags: always
 
 - name: Install Java 21
@@ -21,16 +48,71 @@
     path: "{{ java21_home.stdout }}/bin/java"
   tags: install
 
+# Java 21 just installed fine via dnf (BaseOS/AppStream mirrors), but
+# pkg.jenkins.io has repeatedly failed here with ENETUNREACH even with the
+# IPv4-preference fix confirmed applied. A local repro of this exact box
+# works fine, so something about this specific host differs — rather than
+# guess again, capture the real evidence (DNS order, routing table, a
+# side-by-side against a mirror host that just worked) into this same
+# console log, always, so the next run carries proof instead of a guess.
+- name: Diagnose network path to pkg.jenkins.io
+  ansible.builtin.shell: |
+    echo "--- /etc/gai.conf ---"
+    cat /etc/gai.conf
+    echo "--- /etc/dnf/dnf.conf ---"
+    cat /etc/dnf/dnf.conf
+    echo "--- DNS: pkg.jenkins.io (the one that failed before this fix) ---"
+    getent ahosts pkg.jenkins.io || true
+    echo "--- DNS: a mirror host that just worked for Java 21 ---"
+    MIRROR_HOST=$(grep -hoP '(?<=://)[^/]+' /etc/yum.repos.d/centos*.repo 2>/dev/null | head -1)
+    echo "mirror host: ${MIRROR_HOST:-<none found>}"
+    [ -n "$MIRROR_HOST" ] && getent ahosts "$MIRROR_HOST" || true
+    echo "--- routing table ---"
+    ip route
+    ip -6 route || true
+    echo "--- curl -4 to pkg.jenkins.io (this is what the next task actually uses) ---"
+    curl -4 -v --connect-timeout 10 https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /dev/null 2>&1 | tail -40
+  changed_when: false
+  ignore_errors: true
+  register: network_diagnostics
+  tags: install
+
+# The shell task above reports as a plain "ok" (changed_when: false), and
+# Ansible's default callback doesn't print stdout for "ok" results — so
+# without this, the diagnostics above run but are invisible in the console
+# log (confirmed: exactly what happened on the previous run). Force it.
+- name: Show network diagnostics
+  ansible.builtin.debug:
+    var: network_diagnostics.stdout_lines
+  tags: install
+
+# get_url (Python's own HTTP client, not dnf/librepo) is what actually failed
+# here — twice, even with gai.conf's sort-order fix confirmed applied. Rather
+# than trust another layer of "should respect IPv4 preference," force it
+# directly: curl -4 can't attempt IPv6 even if it wanted to.
 - name: Add Jenkins repository
-  ansible.builtin.get_url:
-    url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
-    dest: /etc/yum.repos.d/jenkins.repo
-    mode: "0644"
+  ansible.builtin.command:
+    cmd: curl -4 -sSfL --connect-timeout 15 -o /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    creates: /etc/yum.repos.d/jenkins.repo
+  register: add_jenkins_repo
+  until: add_jenkins_repo is succeeded
+  retries: 3
+  delay: 10
+  tags: install
+
+- name: Download Jenkins GPG key (force IPv4, same reasoning as above)
+  ansible.builtin.command:
+    cmd: curl -4 -sSfL --connect-timeout 15 -o /tmp/jenkins.io-2023.key https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+  register: download_jenkins_key
+  until: download_jenkins_key is succeeded
+  retries: 3
+  delay: 10
+  changed_when: true
   tags: install
 
 - name: Import Jenkins GPG key
   ansible.builtin.rpm_key:
-    key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    key: /tmp/jenkins.io-2023.key
     state: present
   tags: install
 
@@ -38,6 +120,10 @@
   ansible.builtin.dnf:
     name: epel-release
     state: present
+  register: install_epel
+  until: install_epel is succeeded
+  retries: 3
+  delay: 10
   tags: install
 
 - name: Install Ansible and Jenkins
@@ -46,6 +132,10 @@
       - ansible
       - jenkins
     state: present
+  register: install_jenkins_pkg
+  until: install_jenkins_pkg is succeeded
+  retries: 3
+  delay: 10
   tags: install
 
 - name: Create systemd drop-in directory for Jenkins
@@ -61,7 +151,12 @@
     content: |
       [Service]
       Environment="JAVA_HOME={{ java21_home.stdout }}"
-      Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"
+      # preferIPv4Stack: plugin installs later in this play fetch from
+      # Jenkins' own update center (updates.jenkins.io) from *inside* this
+      # JVM — curl -4/dnf's ip_resolve=4 don't cover that path at all. Same
+      # guarantee, same reasoning, applied to the one network stack those
+      # two don't reach.
+      Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true"
       Environment="CASC_JENKINS_CONFIG={{ jenkins_home }}/casc_configs"
       Environment="JENKINS_PORT={{ jenkins_http_port }}"
       TimeoutStartSec=300
