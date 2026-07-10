@@ -37,7 +37,7 @@ unclassified:
   gerrit-trigger:
     servers:
       - name: "GerritHub"
-        noConnectionOnStartup: false
+        noConnectionOnStartup: {{ (not gerrit_connect_on_startup) | lower }}
         config:
           gerritHostName: "review.gerrithub.io"
           gerritSshPort: 29418
