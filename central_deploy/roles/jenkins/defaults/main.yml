@@ -11,6 +11,10 @@ jenkins_public_ip: 192.168.100.170
 # Where the swiftacular-dummy job fetches its own Jenkinsfile from.
 # Overridden by run.sh --local-repo to point at a local git daemon instead.
 dummy_job_repo_url: https://review.gerrithub.io/davidsaOpenu/jenkins
+# Whether gerrit-trigger actually opens its SSH connection to GerritHub at
+# boot. Overridden to false by run.sh's self-check mode, where the deployed
+# Gerrit key is a throwaway that was never registered with GerritHub.
+gerrit_connect_on_startup: true
 jenkins_host_agent_ip: 192.168.100.1
 jenkins_plugins:
   - configuration-as-code
