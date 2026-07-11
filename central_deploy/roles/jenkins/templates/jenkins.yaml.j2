@@ -68,6 +68,27 @@ jobs:
           }
         }
         definition {
+{% if dummy_job_inline | default(false) %}
+          // Bootstrap fallback: jobs/swiftacular-dummy/Jenkinsfile doesn't
+          // exist on {{ dummy_job_repo_url }}'s master yet (the change adding
+          // it isn't merged), so cpsScm would fail with "Jenkinsfile not
+          // found". Same pipeline, inlined — trigger wiring still verified.
+          cps {
+            script('''
+              pipeline {
+                agent any
+                stages {
+                  stage('Dummy') {
+                    steps {
+                      sh 'ls'
+                    }
+                  }
+                }
+              }
+            '''.stripIndent())
+            sandbox(true)
+          }
+{% else %}
           cpsScm {
             scm {
               git {
@@ -79,5 +100,6 @@ jobs:
             }
             scriptPath('jobs/swiftacular-dummy/Jenkinsfile')
           }
+{% endif %}
         }
       }
