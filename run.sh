@@ -44,6 +44,14 @@
 # and debug — same as a successful run, just something to go fix first.
 set -euo pipefail
 
+# The host environment exports a broken proxy (https_proxy=https://192.114.0.89:80/
+# — wrong scheme, and unreachable for private addresses regardless). Everything
+# this script curls is a local VM (192.168.100.x) no proxy could ever reach,
+# but curl silently honors http_proxy for plain-http URLs: each request hangs
+# for minutes against the dead proxy and returns empty — which surfaced as
+# json.decoder.JSONDecodeError in Step 6. Strip the whole family.
+unset http_proxy https_proxy ftp_proxy all_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY
+
 title() {
     echo ""
     echo "════════════════════════════════════════════════════════════"
@@ -403,7 +411,18 @@ fi
 RESULT=$(curl -sf -u "${ADMIN_USER}:${ADMIN_PASS}" "${JENKINS_URL}/job/${DUMMY_JOB}/${NUM}/api/json" \
     | python3 -c "import sys,json; print(json.load(sys.stdin)['result'])")
 echo "→ Build #${NUM} result: ${RESULT}"
-[[ "$RESULT" == "SUCCESS" ]] || { echo "✗ Dummy job did not succeed"; exit 1; }
+# The VM is torn down right after this script exits, taking the build's
+# console log with it — dump it into THIS log first, or a failure here is
+# undiagnosable (exactly what happened: "Build #2 result: FAILURE", no why).
+if [[ "$RESULT" != "SUCCESS" ]]; then
+    echo "✗ Dummy job did not succeed — console log of build #${NUM} follows:"
+    echo "──────────────────────────────────────────────────────────"
+    curl -sf -u "${ADMIN_USER}:${ADMIN_PASS}" \
+        "${JENKINS_URL}/job/${DUMMY_JOB}/${NUM}/consoleText" \
+        || echo "(could not fetch console log)"
+    echo "──────────────────────────────────────────────────────────"
+    exit 1
+fi
 
 title "Step 8/8 — Done"
 if [[ "$REAL_GERRIT" == "true" ]]; then
