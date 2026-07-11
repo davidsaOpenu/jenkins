@@ -1,0 +1,65 @@
+pipeline {
+    agent { label env.JOB_NAME.replaceFirst(/^[^-]+-/, '') }
+
+    options {
+        disableConcurrentBuilds(abortPrevious: true)
+        timeout(time: 15, unit: 'MINUTES')
+        buildDiscarder(logRotator(daysToKeepStr: '14', numToKeepStr: '24'))
+    }
+
+    triggers {
+        gerrit(
+            gerritProjects: [[
+                compareType: 'PLAIN',
+                pattern: 'davidsaOpenu/xv6',
+                branches: [[compareType: 'PLAIN', pattern: "${params.GERRIT_BRANCH}"]]
+            ]],
+            serverName: 'GerritHub',
+            triggerOnEvents: [
+                patchsetCreated(excludeDrafts: true, excludeTrivialRebase: true,
+                                excludeNoCodeChange: true, excludeWip: true),
+                changeMerged(),
+                changeRestored(),
+                commentAddedContains('(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*(\\n\\n)?\\s*(recheck)')
+            ]
+        )
+    }
+
+    parameters {
+        string(name: 'GERRIT_REFSPEC', defaultValue: 'refs/heads/master')
+        string(name: 'GERRIT_BRANCH',  defaultValue: 'master')
+    }
+
+    stages {
+        stage('Check owner') {
+            steps {
+                script {
+                    if (env.GERRIT_CHANGE_OWNER_USERNAME &&
+                            env.GERRIT_CHANGE_OWNER_USERNAME != env.GERRIT_OWNER_USERNAME) {
+                        currentBuild.result = 'ABORTED'
+                        error("Skipping: owner '${env.GERRIT_CHANGE_OWNER_USERNAME}' != '${env.GERRIT_OWNER_USERNAME}'")
+                    }
+                }
+            }
+        }
+
+        stage('Prepare worktree') {
+            steps {
+                sh "ssh build-host 'git -C ${env.PROJECT_PATH} worktree remove ${env.PROJECT_PATH}-ci --force 2>/dev/null || true'"
+                sh "ssh build-host 'git -C ${env.PROJECT_PATH} fetch origin ${params.GERRIT_REFSPEC}'"
+                sh "ssh build-host 'git -C ${env.PROJECT_PATH} worktree add ${env.PROJECT_PATH}-ci FETCH_HEAD'"
+                sh "ssh build-host 'git -C ${env.PROJECT_PATH}-ci submodule update --init --recursive'"
+            }
+        }
+
+        stage('CI') {
+            steps { sh "ssh build-host 'cd ${env.PROJECT_PATH}-ci && ./infra/bootstrap.sh'" }
+        }
+    }
+
+    post {
+        always {
+            sh "ssh build-host 'git -C ${env.PROJECT_PATH} worktree remove ${env.PROJECT_PATH}-ci --force || true'"
+        }
+    }
+}

@@ -1,0 +1,26 @@
+# Copy this file to vault.yml and fill in your values.
+# Encrypt: ansible-vault encrypt vault.yml
+# Run playbooks: ansible-playbook <playbook>.yaml --ask-vault-pass
+
+# Jenkins admin credentials (student VM UI)
+vault_jenkins_admin_user: "admin"
+vault_jenkins_admin_password: ""        # choose a password
+
+# Host machine SSH access (VM SSHes into your machine to run CI)
+vault_host_username: ""                 # your Linux username (run: whoami)
+vault_host_ssh_private_key: |           # paste output of: cat ~/.ssh/id_ed25519
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  ...
+  -----END OPENSSH PRIVATE KEY-----
+vault_host_project_path: ""             # absolute path to project clone, e.g. /home/alice/swiftacular
+
+# Your identity — informational only, for the instructor's own records; not
+# read by any script or template here.
+vault_student_name: ""                  # short id, no spaces (e.g. alice)
+vault_student_project: ""              # swiftacular | xv6 | simulator | swiftacular_dummy
+vault_gerrit_owner_username: ""         # your GerritHub username
+
+# Central Jenkins connection — provided by instructor after running setup_students.sh
+vault_central_url: ""
+vault_central_agent_name: ""           # e.g. alice-vm
+vault_central_agent_secret: ""         # from instructor
