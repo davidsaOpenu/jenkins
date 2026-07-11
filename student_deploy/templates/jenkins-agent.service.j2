@@ -1,0 +1,18 @@
+[Unit]
+Description=Jenkins Agent
+After=network.target
+
+[Service]
+User=jenkins
+Environment=GERRIT_OWNER_USERNAME={{ vault_gerrit_owner_username }}
+Environment=PROJECT_PATH={{ vault_host_project_path }}
+ExecStart=/usr/bin/java -jar /opt/jenkins-agent/agent.jar \
+  -url {{ vault_central_url }} \
+  -secret {{ vault_central_agent_secret }} \
+  -name {{ vault_central_agent_name }} \
+  -workDir /var/lib/jenkins-agent
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
