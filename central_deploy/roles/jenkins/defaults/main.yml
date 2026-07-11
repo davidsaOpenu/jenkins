@@ -1,6 +1,11 @@
 ---
 jenkins_home: /var/lib/jenkins
 jenkins_http_port: 8090
+# Pinned LTS version, installed as a direct RPM URL from get.jenkins.io
+# (mirror redirector, Azure-hosted) — NOT from pkg.jenkins.io, whose Fastly
+# CDN range (151.101/146.75) is blackholed on the deploy network. Bump
+# deliberately; check https://get.jenkins.io/redhat-stable/ for versions.
+jenkins_version: "2.528.3"
 jenkins_admin_user: admin
 # Jenkins' own externally-reachable address, used for its self-referential
 # URL (Gerrit "Verified" comment links, notification emails, etc). Must
