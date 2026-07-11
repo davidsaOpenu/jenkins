@@ -105,13 +105,54 @@
     var: network_diagnostics.stdout_lines
   tags: install
 
+# The physical host has an https_proxy configured (see diagnostic above) —
+# meaning direct outbound access to some destinations is evidently not how
+# this network is meant to work — but its scheme is wrong (https:// instead
+# of http://, hence the "wrong version number" error) and it's not ours to
+# fix (not our server). What IS ours to control: whether the guest tries
+# that same proxy, with the scheme corrected, as a fallback. Self-detecting
+# — try direct first (proven to work for Java/EPEL above), only use the
+# proxy if direct genuinely can't reach pkg.jenkins.io.
+- name: Test direct connectivity to pkg.jenkins.io
+  ansible.builtin.command:
+    cmd: curl -4 -sSf --connect-timeout 8 https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /dev/null
+  register: direct_test
+  changed_when: false
+  ignore_errors: true
+  tags: install
+
+- name: Test pkg.jenkins.io via corrected proxy scheme (fallback, only if direct failed)
+  ansible.builtin.command:
+    cmd: curl -4 -sSf --connect-timeout 8 --proxy http://192.114.0.89:80 https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /dev/null
+  register: proxy_test
+  changed_when: false
+  ignore_errors: true
+  when: direct_test is failed
+  tags: install
+
+- name: Determine how to reach pkg.jenkins.io
+  ansible.builtin.set_fact:
+    jenkins_fetch_proxy: "{{ 'http://192.114.0.89:80' if (direct_test is failed and proxy_test is not skipped and proxy_test is succeeded) else '' }}"
+  tags: install
+
+- name: Report which path reaches pkg.jenkins.io
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'direct connection works' if direct_test is succeeded
+         else ('using proxy http://192.114.0.89:80 (direct failed)' if jenkins_fetch_proxy
+         else 'NEITHER direct nor the corrected proxy could reach pkg.jenkins.io') }}
+  tags: install
+
 # get_url (Python's own HTTP client, not dnf/librepo) is what actually failed
 # here — twice, even with gai.conf's sort-order fix confirmed applied. Rather
 # than trust another layer of "should respect IPv4 preference," force it
 # directly: curl -4 can't attempt IPv6 even if it wanted to.
 - name: Add Jenkins repository
   ansible.builtin.command:
-    cmd: curl -4 -sSfL --connect-timeout 15 -o /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    cmd: >-
+      curl -4 -sSfL --connect-timeout 15
+      {{ '--proxy ' + jenkins_fetch_proxy if jenkins_fetch_proxy else '' }}
+      -o /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
     creates: /etc/yum.repos.d/jenkins.repo
   register: add_jenkins_repo
   until: add_jenkins_repo is succeeded
@@ -119,9 +160,23 @@
   delay: 10
   tags: install
 
+# dnf's later fetch of the actual jenkins RPM (via "Install Ansible and
+# Jenkins" below) reads this same repo file — give it the proxy too, but
+# only for this one repo, since BaseOS/AppStream/EPEL already work direct.
+- name: Configure proxy for the Jenkins repo specifically (only if needed)
+  ansible.builtin.lineinfile:
+    path: /etc/yum.repos.d/jenkins.repo
+    line: "proxy={{ jenkins_fetch_proxy }}"
+    insertafter: "^\\[jenkins\\]"
+  when: jenkins_fetch_proxy
+  tags: install
+
 - name: Download Jenkins GPG key (force IPv4, same reasoning as above)
   ansible.builtin.command:
-    cmd: curl -4 -sSfL --connect-timeout 15 -o /tmp/jenkins.io-2023.key https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    cmd: >-
+      curl -4 -sSfL --connect-timeout 15
+      {{ '--proxy ' + jenkins_fetch_proxy if jenkins_fetch_proxy else '' }}
+      -o /tmp/jenkins.io-2023.key https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
   register: download_jenkins_key
   until: download_jenkins_key is succeeded
   retries: 3
@@ -174,8 +229,9 @@
       # Jenkins' own update center (updates.jenkins.io) from *inside* this
       # JVM — curl -4/dnf's ip_resolve=4 don't cover that path at all. Same
       # guarantee, same reasoning, applied to the one network stack those
-      # two don't reach.
-      Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true"
+      # two don't reach. Proxy flags only added if the direct-vs-proxy test
+      # above found direct access doesn't work — same fallback as the repo/key fetch.
+      Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true{{ ' -Dhttp.proxyHost=192.114.0.89 -Dhttp.proxyPort=80 -Dhttps.proxyHost=192.114.0.89 -Dhttps.proxyPort=80' if jenkins_fetch_proxy else '' }}"
       Environment="CASC_JENKINS_CONFIG={{ jenkins_home }}/casc_configs"
       Environment="JENKINS_PORT={{ jenkins_http_port }}"
       TimeoutStartSec=300
