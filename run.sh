@@ -44,6 +44,14 @@
 # and debug — same as a successful run, just something to go fix first.
 set -euo pipefail
 
+# The host environment exports a broken proxy (https_proxy=https://192.114.0.89:80/
+# — wrong scheme, and unreachable for private addresses regardless). Everything
+# this script curls is a local VM (192.168.100.x) no proxy could ever reach,
+# but curl silently honors http_proxy for plain-http URLs: each request hangs
+# for minutes against the dead proxy and returns empty — which surfaced as
+# json.decoder.JSONDecodeError in Step 6. Strip the whole family.
+unset http_proxy https_proxy ftp_proxy all_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY
+
 title() {
     echo ""
     echo "════════════════════════════════════════════════════════════"

@@ -48,93 +48,14 @@
     path: "{{ java21_home.stdout }}/bin/java"
   tags: install
 
-# Forcing IPv4 (curl -4) still timed out on every one of Fastly's real
-# IPv4 addresses — not an address-family problem, something is dropping
-# traffic to this specific destination. The one open question: is that
-# block guest-VM-only, or does it affect the physical host too? This runs
-# the identical probe delegated to the host itself (not nested in a VM,
-# confirmed earlier — no relay needed) so both results land in the same log.
-- name: Diagnose Fastly reachability from the physical host (not just the guest)
-  ansible.builtin.shell: |
-    curl -4 -v --connect-timeout 5 https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /dev/null 2>&1 | tail -40
-  delegate_to: localhost
-  become: false
-  register: host_fastly_check
-  changed_when: false
-  ignore_errors: true
-  tags: install
-
-- name: Show host-side Fastly reachability result
-  ansible.builtin.debug:
-    var: host_fastly_check.stdout_lines
-  tags: install
-
-# Java 21 just installed fine via dnf (BaseOS/AppStream mirrors — a
-# completely different network than Fastly, see task above), but
-# pkg.jenkins.io has repeatedly failed here even with IPv4 forced. Capture
-# the guest-side evidence too (DNS order, routing table) into this same
-# console log, so the next run carries proof instead of a guess.
-- name: Diagnose network path to pkg.jenkins.io
-  ansible.builtin.shell: |
-    echo "--- /etc/gai.conf ---"
-    cat /etc/gai.conf
-    echo "--- /etc/dnf/dnf.conf ---"
-    cat /etc/dnf/dnf.conf
-    echo "--- DNS: pkg.jenkins.io (the one that failed before this fix) ---"
-    getent ahosts pkg.jenkins.io || true
-    echo "--- DNS: a mirror host that just worked for Java 21 ---"
-    MIRROR_HOST=$(grep -hoP '(?<=://)[^/]+' /etc/yum.repos.d/centos*.repo 2>/dev/null | head -1)
-    echo "mirror host: ${MIRROR_HOST:-<none found>}"
-    [ -n "$MIRROR_HOST" ] && getent ahosts "$MIRROR_HOST" || true
-    echo "--- routing table ---"
-    ip route
-    ip -6 route || true
-    echo "--- curl -4 to pkg.jenkins.io (this is what the next task actually uses) ---"
-    curl -4 -v --connect-timeout 10 https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /dev/null 2>&1 | tail -40
-  changed_when: false
-  ignore_errors: true
-  register: network_diagnostics
-  tags: install
-
-# The shell task above reports as a plain "ok" (changed_when: false), and
-# Ansible's default callback doesn't print stdout for "ok" results — so
-# without this, the diagnostics above run but are invisible in the console
-# log (confirmed: exactly what happened on the previous run). Force it.
-- name: Show network diagnostics
-  ansible.builtin.debug:
-    var: network_diagnostics.stdout_lines
-  tags: install
-
-# get_url (Python's own HTTP client, not dnf/librepo) is what actually failed
-# here — twice, even with gai.conf's sort-order fix confirmed applied. Rather
-# than trust another layer of "should respect IPv4 preference," force it
-# directly: curl -4 can't attempt IPv6 even if it wanted to.
-- name: Add Jenkins repository
-  ansible.builtin.command:
-    cmd: curl -4 -sSfL --connect-timeout 15 -o /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
-    creates: /etc/yum.repos.d/jenkins.repo
-  register: add_jenkins_repo
-  until: add_jenkins_repo is succeeded
-  retries: 3
-  delay: 10
-  tags: install
-
-- name: Download Jenkins GPG key (force IPv4, same reasoning as above)
-  ansible.builtin.command:
-    cmd: curl -4 -sSfL --connect-timeout 15 -o /tmp/jenkins.io-2023.key https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-  register: download_jenkins_key
-  until: download_jenkins_key is succeeded
-  retries: 3
-  delay: 10
-  changed_when: true
-  tags: install
-
-- name: Import Jenkins GPG key
-  ansible.builtin.rpm_key:
-    key: /tmp/jenkins.io-2023.key
-    state: present
-  tags: install
-
+# pkg.jenkins.io sits behind Fastly, and this network blackholes Fastly's
+# IP ranges (151.101/146.75 — proven: every other mirror works direct, all
+# four Fastly addresses time out, from guest AND physical host alike). So
+# skip that repo entirely: get.jenkins.io is Jenkins' mirror redirector
+# (Azure-hosted, not Fastly) and 302s to university mirrors carrying the
+# exact same signed RPM. Mirrors don't carry yum repodata (only pkg does),
+# hence a pinned direct RPM URL instead of a repo file — which also means
+# the deploy no longer silently tracks "latest".
 - name: Install EPEL repository
   ansible.builtin.dnf:
     name: epel-release
@@ -145,11 +66,70 @@
   delay: 10
   tags: install
 
-- name: Install Ansible and Jenkins
+- name: Install Ansible
   ansible.builtin.dnf:
-    name:
-      - ansible
-      - jenkins
+    name: ansible
+    state: present
+  register: install_ansible_pkg
+  until: install_ansible_pkg is succeeded
+  retries: 3
+  delay: 10
+  tags: install
+
+# Restores the "always latest LTS" behaviour the yum repo gave us, without
+# touching Fastly: updates.jenkins.io (Azure-hosted, reachable) publishes
+# the current LTS version as a one-line text file.
+- name: Detect latest Jenkins LTS version (skipped if jenkins_version is pinned)
+  ansible.builtin.command:
+    cmd: curl -4 -sSfL --connect-timeout 15 https://updates.jenkins.io/stable/latestCore.txt
+  register: latest_core
+  until: latest_core is succeeded
+  retries: 3
+  delay: 10
+  changed_when: false
+  when: not jenkins_version
+  tags: install
+
+- name: Resolve Jenkins version to install
+  ansible.builtin.set_fact:
+    jenkins_version: "{{ jenkins_version if jenkins_version else latest_core.stdout | trim }}"
+  tags: install
+
+# The signing key is only published on pkg.jenkins.io (Fastly, unreachable
+# from the deploy network), so it's vendored into this role instead —
+# fetched once from the origin and cross-checked: key ID 7198F4B714ABFC68
+# (rsa4096, issued 2025-12-22, expires 2028-12-21) matches the RSA header
+# signature on the actual RPM, and the mirror's RPM is byte-identical
+# (sha256) to pkg.jenkins.io's origin copy.
+- name: Copy vendored Jenkins RPM signing key to guest
+  ansible.builtin.copy:
+    src: jenkins-2025.key
+    dest: /tmp/jenkins-2025.key
+    mode: "0644"
+  tags: install
+
+- name: Import Jenkins RPM signing key
+  ansible.builtin.rpm_key:
+    key: /tmp/jenkins-2025.key
+    state: present
+  tags: install
+
+# gpgcheck in dnf.conf only covers repo packages — direct URL/file installs
+# (like the Jenkins RPM below) are governed by localpkg_gpgcheck. Without
+# this line, dnf would install an unsigned/tampered RPM without complaint.
+- name: Require signature verification for URL/local RPM installs
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/dnf.conf
+    line: "localpkg_gpgcheck=1"
+    insertafter: "^\\[main\\]"
+  tags: install
+
+# Signature enforced: dnf verifies the RPM against the imported Jenkins key
+# and refuses to install if it doesn't match — a malicious mirror can no
+# longer hand us a tampered package.
+- name: Install Jenkins directly from mirror network (bypasses Fastly)
+  ansible.builtin.dnf:
+    name: "https://get.jenkins.io/rpm-stable/jenkins-{{ jenkins_version }}-1.noarch.rpm"
     state: present
   register: install_jenkins_pkg
   until: install_jenkins_pkg is succeeded
@@ -171,10 +151,10 @@
       [Service]
       Environment="JAVA_HOME={{ java21_home.stdout }}"
       # preferIPv4Stack: plugin installs later in this play fetch from
-      # Jenkins' own update center (updates.jenkins.io) from *inside* this
-      # JVM — curl -4/dnf's ip_resolve=4 don't cover that path at all. Same
-      # guarantee, same reasoning, applied to the one network stack those
-      # two don't reach.
+      # Jenkins' own update center (updates.jenkins.io — Azure-hosted, not
+      # the blackholed Fastly range) from *inside* this JVM — curl -4/dnf's
+      # ip_resolve=4 don't cover that path at all. Same guarantee, same
+      # reasoning, applied to the one network stack those two don't reach.
       Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true"
       Environment="CASC_JENKINS_CONFIG={{ jenkins_home }}/casc_configs"
       Environment="JENKINS_PORT={{ jenkins_http_port }}"
