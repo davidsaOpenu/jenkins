@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+
+    triggers {
+        gerrit(
+            customUrl: '',
+            skipVote: [
+                onSuccessful: true,
+                onFailed: true,
+                onUnstable: true,
+                onNotBuilt: true
+            ],
+            gerritProjects: [[
+                branches: [[
+                    compareType: 'PLAIN',
+                    // ?: 'master' — on the very first build (plain /build,
+                    // job not yet parameterized) params.GERRIT_BRANCH is
+                    // null; without the fallback that build re-registers
+                    // the trigger with branch pattern "null" and no real
+                    // Gerrit event ever matches again.
+                    pattern: "${params.GERRIT_BRANCH ?: 'master'}"
+                ]],
+                compareType: 'PLAIN',
+                disableStrictForbiddenFileVerification: false,
+                pattern: 'davidsaOpenu/swiftacular',
+                filePaths: [[
+                    compareType: 'ANT',
+                    pattern: '**'
+                ]],
+                forbiddenFilePaths: [[
+                    compareType: 'ANT',
+                    pattern: 'kube_deploy/**'
+                ]]
+            ]],
+            serverName: 'review.gerrithub.io',
+            triggerOnEvents: [
+                patchsetCreated(
+                    excludeDrafts: true,
+                    excludeTrivialRebase: true,
+                    excludeNoCodeChange: true,
+                    excludeWip: true
+                ),
+                changeMerged(),
+                changeRestored(),
+                commentAddedContains(
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' +
+                    '(\\n\\n)?\\s*(recheck)'
+                )
+            ]
+        )
+    }
+
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: '14', numToKeepStr: '24'))
+    }
+
+    parameters {
+        string(name: 'GERRIT_REFSPEC', defaultValue: 'refs/heads/master')
+        string(name: 'GERRIT_BRANCH',  defaultValue: 'master')
+    }
+
+    stages {
+        stage('Dummy') {
+            steps {
+                sh 'ls'
+            }
+        }
+    }
+}
