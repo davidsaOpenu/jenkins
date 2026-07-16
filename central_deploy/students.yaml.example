@@ -1,0 +1,22 @@
+# Instructor setup file — copy to students.yaml, fill in, then run:
+#   ./setup_students.sh
+#
+# Keep students.yaml private — it contains passwords and is gitignored.
+# Re-running setup_students.sh is safe — existing users/nodes/jobs are skipped.
+
+central_url: ""       # e.g. http://192.168.100.170:8090
+admin_user: "admin"
+admin_password: ""
+# Local testing (run start_git_daemon.sh first):
+#   repo_url: "git://192.168.100.1/jenkins"
+# Production (GerritHub master):
+repo_url: ""          # e.g. https://review.gerrithub.io/davidsaOpenu/jenkins
+
+students:
+  - name: ""          # short id, no spaces — node: <name>-vm, Jenkins user: <name>
+    project: ""       # swiftacular | xv6 | simulator | swiftacular_dummy (dummy CI job, for now)
+    password: ""      # Jenkins UI password for this student
+
+  - name: ""
+    project: ""
+    password: ""
