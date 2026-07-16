@@ -1,0 +1,11 @@
+jenkins:
+  numExecutors: 0
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "{{ vault_jenkins_admin_user }}"
+          password: "{{ vault_jenkins_admin_password }}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
