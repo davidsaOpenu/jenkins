@@ -1,0 +1,109 @@
+jenkins:
+  systemMessage: "Swiftacular CI - Configured as Code"
+  numExecutors: 2
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "GERRIT_OWNER_USERNAME"
+            value: "{{ gerrit_ssh_username }}"
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "{{ jenkins_admin_user }}"
+          password: "{{ jenkins_admin_password }}"
+
+  authorizationStrategy:
+    # Single admin user in dev; replace with matrix-auth for multi-user or production deployments
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "gerrit-ssh-key"
+              username: "{{ gerrit_ssh_username }}"
+              privateKeySource:
+                directEntry:
+                  # Block scalar, not a quoted string: a real (multi-line PEM)
+                  # key inside double quotes gets YAML line-folded — newlines
+                  # become spaces and the credential is silently corrupted.
+                  privateKey: |
+{{ gerrit_ssh_private_key | trim | indent(20, true) }}
+
+unclassified:
+  location:
+    url: "http://{{ ansible_host }}:{{ jenkins_http_port }}/"
+  gerrit-trigger:
+    servers:
+      - name: "GerritHub"
+        noConnectionOnStartup: {{ (not gerrit_connect_on_startup) | lower }}
+        config:
+          gerritHostName: "review.gerrithub.io"
+          gerritSshPort: 29418
+          gerritUserName: "{{ gerrit_ssh_username }}"
+          gerritAuthKeyFile: "{{ jenkins_home }}/.ssh/gerrit_id_ed25519"
+          gerritFrontEndUrl: "https://review.gerrithub.io/"
+          gerritBuildStartedVerifiedValue: 0
+          gerritBuildStartedCodeReviewValue: 0
+          gerritBuildSuccessfulVerifiedValue: 1
+          gerritBuildSuccessfulCodeReviewValue: 0
+          gerritBuildFailedVerifiedValue: -1
+          gerritBuildFailedCodeReviewValue: 0
+          gerritBuildUnstableVerifiedValue: 0
+          gerritBuildUnstableCodeReviewValue: 0
+          gerritBuildNotBuiltVerifiedValue: 0
+          gerritBuildNotBuiltCodeReviewValue: 0
+
+jobs:
+  - script: |
+      pipelineJob('swiftacular-dummy') {
+        description('Dummy job - verifies Gerrit trigger wiring for swiftacular. No VM, just ls.')
+        triggers {
+          gerrit {
+            events {
+              patchsetCreated()
+            }
+            project('plain:davidsaOpenu/swiftacular', ['plain:master'])
+          }
+        }
+        definition {
+{% if dummy_job_inline | default(false) %}
+          // Bootstrap fallback: jobs/swiftacular-dummy/Jenkinsfile doesn't
+          // exist on {{ dummy_job_repo_url }}'s master yet (the change adding
+          // it isn't merged), so cpsScm would fail with "Jenkinsfile not
+          // found". Same pipeline, inlined — trigger wiring still verified.
+          cps {
+            script('''
+              pipeline {
+                agent any
+                stages {
+                  stage('Dummy') {
+                    steps {
+                      sh 'ls'
+                    }
+                  }
+                }
+              }
+            '''.stripIndent())
+            sandbox(true)
+          }
+{% else %}
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('{{ dummy_job_repo_url }}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('jobs/swiftacular-dummy/Jenkinsfile')
+          }
+{% endif %}
+        }
+      }
