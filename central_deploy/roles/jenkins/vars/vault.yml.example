@@ -1,0 +1,38 @@
+---
+# Copy this file to vault.yml, fill in your values, then encrypt it:
+#   cp roles/jenkins/vars/vault.yml.example roles/jenkins/vars/vault.yml
+#   ansible-vault encrypt roles/jenkins/vars/vault.yml
+
+vault_jenkins_admin_password: changeme
+
+# Your GerritHub username (used to associate the SSH key with your account)
+vault_gerrit_ssh_username: your_gerrithub_username
+
+# Email registered to that GerritHub account (Settings > Email Addresses).
+# run.sh uses this as the commit identity when pushing the verification
+# patchset — Gerrit rejects commits whose committer email isn't registered.
+vault_gerrit_email: your_registered_email@example.com
+
+# Private key of the SSH key pair you registered in GerritHub
+# Generate with: ssh-keygen -t ed25519 -f gerrit_jenkins_key -C "jenkins@swiftacular"
+# Register gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+vault_gerrit_ssh_private_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  paste_your_private_key_here
+  -----END OPENSSH PRIVATE KEY-----
+
+# Optional — only needed if this Jenkins runs inside a VM and run.sh must
+# relay work to the physical host (vagrant/libvirt can't nest inside a VM).
+# Leave both blank if this Jenkins runs directly on bare metal.
+vault_host_username: ""
+vault_host_ssh_private_key: ""
+
+# Optional — a permanent Gerrit change on davidsaOpenu/swiftacular that you
+# reserve for run.sh's self-check.
+#   - set: pushes a real, fresh patchset onto it to verify the Gerrit
+#     trigger wiring against actual GerritHub traffic.
+#   - blank: skips GerritHub entirely — instead simulates the same event
+#     directly inside Jenkins' gerrit-trigger plugin (Script Console), still
+#     exercising its real project/branch/event-type matching logic, just
+#     without a network round-trip or needing a reserved change at all.
+vault_dummy_change_number: ""
