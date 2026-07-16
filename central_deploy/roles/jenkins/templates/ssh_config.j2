@@ -1,0 +1,6 @@
+Host build-host
+    HostName {{ jenkins_host_agent_ip }}
+    User {{ host_username }}
+    IdentityFile {{ jenkins_home }}/.ssh/host_id_ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
