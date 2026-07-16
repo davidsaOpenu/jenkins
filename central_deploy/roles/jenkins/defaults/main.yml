@@ -1,0 +1,34 @@
+---
+jenkins_home: /var/lib/jenkins
+jenkins_http_port: 8090
+# Jenkins LTS version. Empty = auto-detect the latest from
+# updates.jenkins.io/stable/latestCore.txt at deploy time (same "always
+# latest stable" behaviour the pkg.jenkins.io yum repo used to give us).
+# Set explicitly (e.g. "2.568.1") to pin instead. Either way the RPM is
+# fetched from get.jenkins.io (mirror redirector, Azure-hosted) — NOT from
+# pkg.jenkins.io, whose Fastly CDN range is blackholed on the deploy network.
+jenkins_version: ""
+jenkins_admin_user: admin
+# Jenkins' own externally-reachable address, used for its self-referential
+# URL (Gerrit "Verified" comment links, notification emails, etc). Must
+# match the static private_network IP in Vagrantfile.jenkins — NOT
+# ansible_host, which is the libvirt management-network address ansible
+# uses to connect and isn't reachable from outside the hypervisor.
+jenkins_public_ip: 192.168.100.170
+# Where the swiftacular-dummy job fetches its own Jenkinsfile from.
+# Overridden by run.sh --local-repo to point at a local git daemon instead.
+dummy_job_repo_url: https://review.gerrithub.io/davidsaOpenu/jenkins
+# Whether gerrit-trigger actually opens its SSH connection to GerritHub at
+# boot. Overridden to false by run.sh's self-check mode, where the deployed
+# Gerrit key is a throwaway that was never registered with GerritHub.
+gerrit_connect_on_startup: true
+jenkins_host_agent_ip: 192.168.100.1
+jenkins_plugins:
+  - configuration-as-code
+  - job-dsl
+  - git
+  - workflow-aggregator
+  - ansible
+  - gerrit-trigger
+  - ssh-credentials
+  - credentials-binding
