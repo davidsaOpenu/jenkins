@@ -23,6 +23,9 @@ pipeline {
                 forbiddenFilePaths: [[
                     compareType: 'ANT',
                     pattern: 'kube_deploy/**'
+                ], [
+                    compareType: 'ANT',
+                    pattern: 'presentations/**'
                 ]]
             ]],
             serverName: 'review.gerrithub.io',
