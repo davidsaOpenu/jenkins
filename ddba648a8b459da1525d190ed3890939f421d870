@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee6903b6_062f9661",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 10
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-30T11:04:36Z",
+      "side": 1,
+      "message": "Fetch Jenkins WAR task downloads a WAR file and verifies SHA-256 checksum",
+      "range": {
+        "startLine": 16,
+        "startChar": 51,
+        "endLine": 16,
+        "endChar": 62
+      },
+      "revId": "ddba648a8b459da1525d190ed3890939f421d870",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4238ebe_e972bdac",
+        "filename": "central_deploy/reset_students.sh",
+        "patchSetId": 10
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-30T11:04:36Z",
+      "side": 1,
+      "message": "better to switch to a safer parse-to-JSON-then-jq -r/read -r pipeline instead of eval",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 4
+      },
+      "revId": "ddba648a8b459da1525d190ed3890939f421d870",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6b03e9a_65794505",
+        "filename": "central_deploy/setup_students.sh",
+        "patchSetId": 10
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-30T11:04:36Z",
+      "side": 1,
+      "message": "better to switch to a safer parse-to-JSON-then-jq -r/read -r pipeline instead of eval",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 4
+      },
+      "revId": "ddba648a8b459da1525d190ed3890939f421d870",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
