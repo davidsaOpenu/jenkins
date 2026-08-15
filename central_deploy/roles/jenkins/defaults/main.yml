@@ -1,0 +1,32 @@
+---
+jenkins_home: /var/lib/jenkins
+jenkins_http_port: 8080
+# Jenkins LTS version. Empty = auto-detect from
+# updates.jenkins.io/stable/latestCore.txt. Set explicitly (e.g. "2.568.1")
+# to pin. Fetched via get.jenkins.io (Azure), not pkg.jenkins.io — its
+# Fastly CDN range is blackholed on the deploy network.
+jenkins_version: ""
+jenkins_admin_user: admin
+# Jenkins' externally-reachable address (self-referential URL, plugin-install
+# CLI origin check). deploy_central_jenkins.sh auto-detects and overrides
+# this; the default here is only for a manual ansible-playbook run against
+# the test VM (must match Vagrantfile.jenkins's static IP).
+jenkins_public_ip: 192.168.100.170
+# Where the swiftacular-dummy job fetches its own Jenkinsfile from.
+# Overridden by run.sh --local-repo (via gerrit_central.yml's
+# dummy_job_repo_url) to point at a local git daemon instead.
+dummy_job_repo_url: https://review.gerrithub.io/davidsaOpenu/jenkins
+jenkins_plugins:
+  - configuration-as-code
+  - job-dsl
+  - git
+  - workflow-aggregator
+  - ansible
+  - gerrit-trigger
+  - ssh-credentials
+  - credentials-binding
+  - plain-credentials
+  - lockable-resources
+  - PrioritySorter
+  - timestamper
+  - pipeline-stage-view

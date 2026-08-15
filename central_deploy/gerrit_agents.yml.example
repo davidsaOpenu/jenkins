@@ -1,0 +1,22 @@
+# Test-account credentials for run.sh's node A / node B routing test. Both
+# nodes are mandatory, same as gerrit_central.yml — no mock mode.
+#
+# NEVER commit this file with real values filled in.
+
+node_a:
+  gerrit_ssh_username: ""
+  gerrit_email: ""
+  gerrit_ssh_private_key: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    paste_your_private_key_here
+    -----END OPENSSH PRIVATE KEY-----
+  dummy_change_number: ""
+
+node_b:
+  gerrit_ssh_username: ""
+  gerrit_email: ""
+  gerrit_ssh_private_key: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    paste_your_private_key_here
+    -----END OPENSSH PRIVATE KEY-----
+  dummy_change_number: ""
