@@ -1,0 +1,18 @@
+[Unit]
+Description=Jenkins Agent
+After=network.target
+
+[Service]
+User=jenkins
+Environment=GERRIT_OWNER_USERNAME={{ gerrit_owner_username }}
+ExecStart=/usr/bin/java -jar /opt/jenkins-agent/agent.jar \
+  -url {{ central_url }} \
+  -secret {{ central_agent_secret }} \
+  -name {{ central_agent_name }} \
+  -webSocket \
+  -workDir /var/lib/jenkins-agent
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
