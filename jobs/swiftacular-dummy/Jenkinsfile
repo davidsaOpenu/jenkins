@@ -1,0 +1,111 @@
+// Routes to whichever agent belongs to the patchset's author — which node
+// builds this IS the routing decision, no owner-check stage. Same
+// derivation as jenkins.yaml.j2's built-in-node label and setup_students.sh.
+def agentLabel(String username) {
+    return (username ?: 'built-in').replaceAll(/[^A-Za-z0-9]+/, '-')
+}
+
+pipeline {
+    agent none
+
+    triggers {
+        gerrit(
+            customUrl: '',
+            skipVote: [
+                onSuccessful: true,
+                onFailed: true,
+                onUnstable: true,
+                onNotBuilt: true
+            ],
+            gerritProjects: [[
+                branches: [[
+                    compareType: 'PLAIN',
+                    // ?: 'master' — on the very first build params.GERRIT_BRANCH
+                    // is null; without the fallback the trigger re-registers
+                    // with branch pattern "null" and never matches again.
+                    pattern: "${params.GERRIT_BRANCH ?: 'master'}"
+                ]],
+                compareType: 'PLAIN',
+                disableStrictForbiddenFileVerification: false,
+                pattern: 'davidsaOpenu/swiftacular',
+                filePaths: [[
+                    compareType: 'ANT',
+                    pattern: '**'
+                ]],
+                forbiddenFilePaths: [[
+                    compareType: 'ANT',
+                    pattern: 'kube_deploy/**'
+                ]]
+            ]],
+            serverName: 'review.gerrithub.io',
+            triggerOnEvents: [
+                patchsetCreated(
+                    excludeDrafts: true,
+                    excludeTrivialRebase: true,
+                    excludeNoCodeChange: true,
+                    excludeWip: true
+                ),
+                changeMerged(),
+                changeRestored(),
+                commentAddedContains(
+                    '(?i)^(Patch Set [0-9]+:)?( [\\w\\\\+-]*)*' +
+                    '(\\n\\n)?\\s*(recheck)'
+                )
+            ]
+        )
+    }
+
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: '14', numToKeepStr: '24'))
+        // Timestamps every console line — makes the pause/resume gap around
+        // the Approval stage's input step visibly obvious in the log.
+        timestamps()
+    }
+
+    parameters {
+        string(name: 'GERRIT_REFSPEC', defaultValue: 'refs/heads/master')
+        string(name: 'GERRIT_BRANCH',  defaultValue: 'master')
+    }
+
+    stages {
+        stage('Approval') {
+            steps {
+                // submitter: alone doesn't block anyone under
+                // loggedInUsersCanDoAnything — the loop below is the real
+                // check, using the real authenticated clicker's identity.
+                script {
+                    echo "PAUSED — waiting for ${env.GERRIT_CHANGE_OWNER_USERNAME} to approve this build."
+                    def approver = null
+                    def matched = false
+                    for (int attempt = 1; attempt <= 2 && !matched; attempt++) {
+                        timeout(time: 15, unit: 'MINUTES') {
+                            approver = input message: "Approve this build (attempt ${attempt}/2)",
+                                             submitter: env.GERRIT_CHANGE_OWNER_USERNAME,
+                                             submitterParameter: 'APPROVER'
+                        }
+                        matched = (env.GERRIT_CHANGE_OWNER_USERNAME == null || approver == env.GERRIT_CHANGE_OWNER_USERNAME)
+                        if (!matched) {
+                            echo "REJECTED (attempt ${attempt}/2) — ${approver} is not ${env.GERRIT_CHANGE_OWNER_USERNAME}."
+                        }
+                    }
+                    if (!matched) {
+                        error("Approval failed — wrong identity after 2 attempts")
+                    }
+                    echo "APPROVED by ${approver} — resuming build."
+                }
+            }
+        }
+        stage('Dummy') {
+            agent { label agentLabel(env.GERRIT_CHANGE_OWNER_USERNAME) }
+            steps {
+                // Records the node as structured build metadata (read via
+                // api/json), not console text. NODE_NAME is "" on the
+                // built-in node — normalize it to a comparable literal.
+                script {
+                    currentBuild.description = env.NODE_NAME ?: 'built-in'
+                }
+                sh 'ls'
+            }
+        }
+    }
+}

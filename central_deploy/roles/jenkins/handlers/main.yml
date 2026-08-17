@@ -1,0 +1,9 @@
+---
+# Must block until the restart actually happens: with --no-block the next
+# task's /login poll can get a 200 from the OLD still-running instance and
+# the play proceeds against a Jenkins that is about to go down.
+- name: Restart jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    state: restarted
+  become: true
