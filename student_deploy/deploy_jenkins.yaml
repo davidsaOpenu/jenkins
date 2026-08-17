@@ -1,0 +1,115 @@
+---
+- name: Deploy Jenkins agent
+  hosts: all
+  become: true
+
+  handlers:
+    # daemon_reload re-reads the unit *definition*; state: restarted then
+    # starts it fresh (never running) or restarts it (content changed) in
+    # the same call — covers both cases without a separate enable/start
+    # task. This is the last task in the play, so Ansible's default
+    # end-of-play handler flush already runs it immediately; no explicit
+    # flush needed.
+    - name: restart jenkins-agent
+      ansible.builtin.systemd:
+        name: jenkins-agent
+        daemon_reload: true
+        state: restarted
+        enabled: true
+
+  vars:
+    # Java package name per distro family (ansible_os_family), or per
+    # distribution where one differs from its family: Fedora dropped Java 21.
+    # The package module picks the package manager, but not the name.
+    java_package:
+      Fedora: java-25-openjdk-headless
+      RedHat: java-21-openjdk
+      Debian: openjdk-21-jre-headless
+      Suse: java-21-openjdk
+      Archlinux: jre21-openjdk-headless
+
+  tasks:
+    # A Java 21+ the student already has is used as-is, whatever the distro.
+    - name: Check for an existing Java
+      ansible.builtin.command: java -version
+      register: java_check
+      changed_when: false
+      failed_when: false
+
+    - name: Work out the installed Java major version (0 if none)
+      ansible.builtin.set_fact:
+        java_major: "{{ ((java_check.stderr | default('')) | regex_search('version \"(\\d+)', '\\1') or ['0']) | first | int }}"
+
+    - name: Fail on a distro family with no known Java 21 package
+      ansible.builtin.fail:
+        msg: >-
+          No known Java 21 package for {{ ansible_os_family }} — install
+          Java 21 or newer yourself, then re-run.
+      when: java_major | int < 21 and ansible_os_family not in java_package
+
+    - name: Install Java (21 or newer)
+      when: java_major | int < 21
+      vars:
+        java_package_name: "{{ java_package[ansible_distribution] | default(java_package[ansible_os_family]) }}"
+      block:
+        - name: Install the distro's Java package
+          ansible.builtin.package:
+            name: "{{ java_package_name }}"
+            state: present
+      rescue:
+        - name: Explain what to do when this release has no such package
+          ansible.builtin.fail:
+            msg: >-
+              Could not install {{ java_package_name }} on
+              {{ ansible_distribution }} {{ ansible_distribution_version }} —
+              install Java 21 or newer yourself, then re-run.
+
+    # No explicit group: — useradd's default (USERGROUPS_ENAB) creates a
+    # same-named "jenkins" group automatically, matching what the
+    # directory/file tasks below already assume.
+    - name: Create jenkins user
+      ansible.builtin.user:
+        name: jenkins
+        system: true
+        create_home: false
+        shell: /sbin/nologin
+
+    - name: Create jenkins-agent directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: jenkins
+        group: jenkins
+        mode: "0755"
+      loop:
+        - /opt/jenkins-agent
+        - /var/lib/jenkins-agent
+
+    # central_ca_cert is only set when central uses a self-signed
+    # certificate — then both the download and the agent must trust it.
+    - name: Download agent.jar from central Jenkins
+      ansible.builtin.get_url:
+        url: "{{ central_url }}/jnlpJars/agent.jar"
+        dest: /opt/jenkins-agent/agent.jar
+        owner: jenkins
+        group: jenkins
+        mode: "0644"
+      environment: "{{ {'SSL_CERT_FILE': central_ca_cert} if (central_ca_cert | default('') | length > 0) else {} }}"
+
+    - name: Install central's certificate for the agent to trust
+      ansible.builtin.copy:
+        src: "{{ central_ca_cert }}"
+        dest: /opt/jenkins-agent/central-ca.crt
+        remote_src: true
+        owner: jenkins
+        group: jenkins
+        mode: "0644"
+      # An explicit true/false — newer Ansible rejects a bare string here.
+      when: central_ca_cert | default('') | length > 0
+
+    - name: Render jenkins-agent service
+      ansible.builtin.template:
+        src: templates/jenkins-agent.service.j2
+        dest: /etc/systemd/system/jenkins-agent.service
+        mode: "0644"
+      notify: restart jenkins-agent

@@ -1,0 +1,30 @@
+[Unit]
+Description=Jenkins Agent
+After=network.target
+
+[Service]
+User=jenkins
+Environment=GERRIT_OWNER_USERNAME={{ gerrit_owner_username }}
+{% if central_ca_cert | default('') | length > 0 %}
+# Through a shell: the agent takes a trusted certificate as text, not as a
+# file ("-cert @file" is broken in agent.jar). $$ is systemd's literal $.
+ExecStart=/bin/sh -c 'exec /usr/bin/java -jar /opt/jenkins-agent/agent.jar \
+  -url {{ central_url }} \
+  -secret {{ central_agent_secret }} \
+  -name {{ central_agent_name }} \
+  -webSocket \
+  -cert "$$(cat /opt/jenkins-agent/central-ca.crt)" \
+  -workDir /var/lib/jenkins-agent'
+{% else %}
+ExecStart=/usr/bin/java -jar /opt/jenkins-agent/agent.jar \
+  -url {{ central_url }} \
+  -secret {{ central_agent_secret }} \
+  -name {{ central_agent_name }} \
+  -webSocket \
+  -workDir /var/lib/jenkins-agent
+{% endif %}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
