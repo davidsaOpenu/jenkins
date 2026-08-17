@@ -161,6 +161,9 @@ def runPipeline() {
 
     protectedStage('Run'){
         dir('jenkins/scripts') {
+            // run.sh derives all 3 identities itself, from this service
+            // account's own ~/.gerrit_test_users (or the hardcoded
+            // defaults) — no Jenkins credential injection needed at all.
             sh './run.sh'
         }
     }
