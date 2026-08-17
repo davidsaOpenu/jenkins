@@ -1,0 +1,49 @@
+# Central Jenkins install + Gerrit-verification credentials — used only by
+# deploy_central_jenkins.sh. Every field is MANDATORY unless marked
+# Optional: central always uses a real GerritHub account, no mock mode.
+#
+# Fill this in and run: sudo ./central_deploy/deploy_central_jenkins.sh central_deploy/gerrit_central.yml
+# NEVER commit this file once real values are filled in.
+
+# Your GerritHub username — used as the Jenkins-Gerrit SSH identity, the
+# identity pushing the verification patchset, AND the Jenkins admin login
+# (no separate admin account — this identity IS the admin).
+gerrit_username: ""
+
+# This identity's Jenkins login password.
+jenkins_admin_password: ""
+
+# Filename under ~/.ssh, on the machine that runs deploy_central_jenkins.sh,
+# of the private key registered to that GerritHub account. The key itself
+# must already be there — this only names it.
+# Generate with: ssh-keygen -t ed25519 -f ~/.ssh/gerrit_jenkins_key -C "jenkins@swiftacular"
+# Register gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+ssh_key_name: ""
+
+# Email registered to that GerritHub account (Settings > Email Addresses).
+# Used as the commit identity when pushing the verification patchset —
+# Gerrit rejects commits whose committer email isn't registered.
+email: ""
+
+# Git commit author name for the verification patchset.
+display_name: ""
+
+# A fixed Change-Id (Ixxxx...) on a permanent Gerrit change on
+# davidsaOpenu/swiftacular, reserved for pushing verification patchsets
+# onto. Embedded directly in every verification commit, so each push lands
+# as a new patchset on that same change instead of opening a new one.
+change_id: ""
+
+# The HTTPS certificate and its private key, as files already on this
+# machine — nginx serves Jenkins with them on port 443. No real one at
+# hand? A self-signed pair works (browsers warn, agents need the .crt):
+#   openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=<host>" \
+#     -addext "subjectAltName=IP:<ip>" -keyout jenkins.key -out jenkins.crt
+tls_cert_file: ""
+tls_key_file: ""
+
+# Optional. The IP/hostname students should use to reach this Jenkins.
+# Leave blank to auto-detect from the default route — only safe if this
+# machine has a single network interface. On a multi-homed server, set
+# this explicitly or students may get handed an unreachable address.
+jenkins_public_ip: ""
