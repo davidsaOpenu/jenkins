@@ -32,17 +32,11 @@ GERRIT_PORT="29418"
 REPO_PATH="davidsaOpenu/swiftacular"     # <org>/<repo> on GerritHub
 REPO_NAME="swiftacular"                  # local dir name after clone
 TARGET_BRANCH="master"                   # branch to submit against
-# One entry per user: "gerrit_username|ssh_key_name|email|display_name|change_id"
-# gerrit_username = the account used in the clone URL (ssh://<user>@host)
-# ssh_key_name    = filename under ~/.ssh (private key)
-# change_id       = fixed Gerrit Change-Id (Ixxxxxx...) so repeated runs
-#                    update the SAME change (new patch set) instead of
-#                    creating a new change every time the script runs.
-USERS=(
-  "jenkins-osw|id_osw_jenkins|osw.jenkins@gmail.com|OSW Jenkins|I7765583f6b6bbe0543e804c749234dcdd95ef140"
-  "jenkins-test-userA|id_jenkins_userA|jenkins.test.userA@gmail.com|Jenkins UserA|Ic719111d55d1a0ed4511c70e3d3f6be21e098d25"
-  "jenkins-test-userB|id_jenkins_userB|jenkins.test.userB@gmail.com|Jenkins UserB|Ibc68ac9afe6cf0170e32bf3ac192a9854026a529"
-)
+# USERS (one entry per user: "gerrit_username|ssh_key_name|email|display_name|change_id")
+# comes from gerrit_users.sh, shared with the DR harness (run.sh) — see that
+# file for the field shape and the ~/.gerrit_test_users local-dev override.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gerrit_users.sh"
+
 SSH_DIR="${HOME}/.ssh"
 WORK_ROOT="${HOME}/gerrit-multi-submit"  # scratch space, cleaned up per user
 # ---------------------------------------------------------------------------
@@ -70,11 +64,12 @@ for entry in "${USERS[@]}"; do
   # 1. Clone
   git clone "ssh://${GERRIT_USER}@${GERRIT_HOST}:${GERRIT_PORT}/${REPO_PATH}" "${CLONE_DIR}"
   pushd "${CLONE_DIR}" > /dev/null
-  # 2. Install commit-msg hook via SSH (scp) instead of HTTPS (curl)
-  #    Avoids TLS/proxy issues on networks that break HTTPS to gerrithub.
+  # 2. Install commit-msg hook via SSH (scp), not HTTPS (curl) — avoids TLS/
+  #    proxy issues. -O forces legacy SCP protocol: OpenSSH 9.0+ defaults to
+  #    SFTP, which Gerrit's SSH daemon (exec-only) rejects outright.
   hook_file="$(git rev-parse --git-dir)/hooks/commit-msg"
   mkdir -p "$(dirname "${hook_file}")"
-  scp -i "${KEY_PATH}" -o IdentitiesOnly=yes -P "${GERRIT_PORT}" \
+  scp -O -i "${KEY_PATH}" -o IdentitiesOnly=yes -P "${GERRIT_PORT}" \
       "${GERRIT_USER}@${GERRIT_HOST}:hooks/commit-msg" "${hook_file}"
   chmod +x "${hook_file}"
   # 3. Set local identity for this clone only

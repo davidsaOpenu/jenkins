@@ -1,0 +1,60 @@
+---
+- name: Deploy Jenkins agent
+  hosts: all
+  become: true
+
+  handlers:
+    # daemon_reload re-reads the unit *definition*; state: restarted then
+    # starts it fresh (never running) or restarts it (content changed) in
+    # the same call — covers both cases without a separate enable/start
+    # task. This is the last task in the play, so Ansible's default
+    # end-of-play handler flush already runs it immediately; no explicit
+    # flush needed.
+    - name: restart jenkins-agent
+      ansible.builtin.systemd:
+        name: jenkins-agent
+        daemon_reload: true
+        state: restarted
+        enabled: true
+
+  tasks:
+    - name: Install Java 21
+      ansible.builtin.dnf:
+        name: java-21-openjdk
+        state: present
+
+    # No explicit group: — useradd's default (USERGROUPS_ENAB) creates a
+    # same-named "jenkins" group automatically, matching what the
+    # directory/file tasks below already assume.
+    - name: Create jenkins user
+      ansible.builtin.user:
+        name: jenkins
+        system: true
+        create_home: false
+        shell: /sbin/nologin
+
+    - name: Create jenkins-agent directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: jenkins
+        group: jenkins
+        mode: "0755"
+      loop:
+        - /opt/jenkins-agent
+        - /var/lib/jenkins-agent
+
+    - name: Download agent.jar from central Jenkins
+      ansible.builtin.get_url:
+        url: "{{ central_url }}/jnlpJars/agent.jar"
+        dest: /opt/jenkins-agent/agent.jar
+        owner: jenkins
+        group: jenkins
+        mode: "0644"
+
+    - name: Render jenkins-agent service
+      ansible.builtin.template:
+        src: templates/jenkins-agent.service.j2
+        dest: /etc/systemd/system/jenkins-agent.service
+        mode: "0644"
+      notify: restart jenkins-agent
