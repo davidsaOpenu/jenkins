@@ -1,0 +1,29 @@
+---
+jenkins_home: /var/lib/jenkins
+jenkins_http_port: 8080
+# Jenkins LTS version. Empty = auto-detect. Fetched via get.jenkins.io
+# (Azure), not pkg.jenkins.io — its Fastly CDN range is blackholed here.
+jenkins_version: ""
+# Jenkins' externally-reachable address (self-referential URL).
+# deploy_central_jenkins.sh auto-detects/overrides this; the default here
+# is only for a manual run against the test VM.
+jenkins_public_ip: 192.168.100.170
+# Pins jenkins-plugin-manager, used to pre-install plugins before Jenkins'
+# first boot (so JCasC's authorizationStrategy is active from boot one,
+# instead of leaving a window where Jenkins runs unsecured).
+jenkins_plugin_manager_version: "2.15.0"
+jenkins_plugins:
+  - configuration-as-code
+  - job-dsl
+  - matrix-auth
+  - git
+  - workflow-aggregator
+  - ansible
+  - gerrit-trigger
+  - ssh-credentials
+  - credentials-binding
+  - plain-credentials
+  - lockable-resources
+  - PrioritySorter
+  - timestamper
+  - pipeline-stage-view
