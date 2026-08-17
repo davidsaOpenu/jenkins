@@ -1,0 +1,19 @@
+# Instructor setup file — copy to students.yaml, fill in, then run:
+#   ./setup_students.sh
+#
+# Keep students.yaml private — it contains passwords and is gitignored.
+# Re-running setup_students.sh is safe — existing users/nodes are updated
+# (each password is reset to the value below).
+
+central_url: ""       # e.g. http://192.168.100.170:8090
+admin_user: "admin"
+admin_password: ""
+
+students:
+  - name: ""          # short id, no spaces — node: <name>-vm, Jenkins user: <name>
+    project: ""       # selects the shared job to grant read access on — see resolve_job_name() in setup_students.sh (swiftacular_dummy only, for now)
+    password: ""      # Jenkins UI password for this student
+
+  - name: ""
+    project: ""
+    password: ""

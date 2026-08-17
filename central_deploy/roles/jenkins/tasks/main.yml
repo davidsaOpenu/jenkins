@@ -1,0 +1,360 @@
+---
+# Guest has no IPv6 route, but glibc's getaddrinfo() tries IPv6 first by
+# default — hosts with both A/AAAA records fail instantly. Reorder the
+# resolver's preference, don't disable IPv6.
+- name: Prefer IPv4 over IPv6 for outbound connections (guest has no IPv6 route)
+  ansible.builtin.lineinfile:
+    path: /etc/gai.conf
+    line: "precedence ::ffff:0:0/96  100"
+    create: true
+  tags: always
+
+# Belt-and-braces on the gai.conf fix above: dnf's librepo is its own
+# curl-based client and isn't necessarily bound by glibc's sort order.
+- name: Force dnf to resolve IPv4 only (belt-and-braces, guest has no IPv6 route)
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/dnf.conf
+    line: "ip_resolve=4"
+    insertafter: "^\\[main\\]"
+  tags: always
+
+- name: Install Java 21
+  ansible.builtin.dnf:
+    name: java-21-openjdk
+    state: present
+  tags: install
+
+- name: Find Java 21 home
+  # java-21-openjdk-headless's postinstall scriptlet already registers the
+  # real path via `alternatives --install` — read it back and strip
+  # /bin/java. pipefail so a grep miss fails loudly, not silently empty.
+  ansible.builtin.shell: "set -o pipefail; alternatives --display java | grep -E '^/.*java-21-openjdk.*/bin/java - ' | awk '{print $1}' | sed 's#/bin/java$##'"
+  args:
+    executable: /bin/bash
+  register: java21_home
+  changed_when: false
+  failed_when: java21_home.rc != 0 or java21_home.stdout == ""
+  tags: install
+
+- name: Set Java 21 as default
+  # link: required so this doesn't fail on a host where the postinstall
+  # scriptlet's alternative somehow wasn't registered — harmless no-op
+  # otherwise.
+  community.general.alternatives:
+    name: java
+    path: "{{ java21_home.stdout }}/bin/java"
+    link: /usr/bin/java
+  tags: install
+
+- name: Install EPEL repository
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  register: install_epel
+  until: install_epel is succeeded
+  retries: 3
+  delay: 10
+  when: ansible_distribution != "Fedora"
+  tags: install
+
+- name: Install Ansible
+  ansible.builtin.dnf:
+    name: ansible
+    state: present
+  register: install_ansible_pkg
+  until: install_ansible_pkg is succeeded
+  retries: 3
+  delay: 10
+  tags: install
+
+# Restores the "always latest LTS" behaviour the yum repo gave us, without
+# touching Fastly: updates.jenkins.io (Azure-hosted, reachable) publishes
+# the current LTS version as a one-line text file.
+- name: Detect latest Jenkins LTS version (skipped if jenkins_version is pinned)
+  ansible.builtin.command:
+    cmd: curl -4 -sSfL --connect-timeout 15 https://updates.jenkins.io/stable/latestCore.txt
+  register: latest_core
+  until: latest_core is succeeded
+  retries: 3
+  delay: 10
+  changed_when: false
+  when: not jenkins_version
+  tags: install
+
+- name: Resolve Jenkins version to install
+  ansible.builtin.set_fact:
+    jenkins_version: "{{ jenkins_version if jenkins_version else latest_core.stdout | trim }}"
+  tags: install
+
+- name: Create jenkins group
+  ansible.builtin.group:
+    name: jenkins
+    system: true
+  tags: install
+
+- name: Create jenkins user
+  ansible.builtin.user:
+    name: jenkins
+    group: jenkins
+    system: true
+    home: "{{ jenkins_home }}"
+    create_home: false
+    shell: /sbin/nologin
+  tags: install
+
+# Only relevant when this host also runs run.sh (spawn_vm needs jenkins's
+# service account in the libvirt group for qemu:///system access). No-op on
+# a central-only production Jenkins with no libvirt group.
+- name: Check for a local libvirt group
+  ansible.builtin.command: getent group libvirt
+  register: libvirt_group_check
+  changed_when: false
+  failed_when: false
+  tags: install
+
+- name: Add jenkins user to the libvirt group
+  ansible.builtin.user:
+    name: jenkins
+    groups: libvirt
+    append: true
+  when: libvirt_group_check.rc == 0
+  tags: install
+
+- name: Create Jenkins home directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: install
+
+# get.jenkins.io (Azure-hosted, not the blackholed Fastly range) redirects to
+# a mirror carrying the WAR + its checksum; get_url verifies sha256 inline.
+- name: Fetch Jenkins WAR
+  ansible.builtin.get_url:
+    url: "https://get.jenkins.io/war-stable/{{ jenkins_version }}/jenkins.war"
+    dest: "{{ jenkins_home }}/jenkins.war"
+    checksum: "sha256:https://get.jenkins.io/war-stable/{{ jenkins_version }}/jenkins.war.sha256"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  register: fetch_jenkins_war
+  until: fetch_jenkins_war is succeeded
+  retries: 3
+  delay: 10
+  tags: install
+
+- name: Create Jenkins plugins directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/plugins"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: install
+
+- name: Write plugins.txt
+  ansible.builtin.copy:
+    content: "{{ jenkins_plugins | join('\n') }}\n"
+    dest: "{{ jenkins_home }}/plugins.txt"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  tags: install
+
+- name: Fetch jenkins-plugin-manager
+  ansible.builtin.get_url:
+    url: "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/{{ jenkins_plugin_manager_version }}/jenkins-plugin-manager-{{ jenkins_plugin_manager_version }}.jar"
+    dest: "{{ jenkins_home }}/jenkins-plugin-manager.jar"
+    checksum: "sha256:https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/{{ jenkins_plugin_manager_version }}/jenkins-plugin-manager-{{ jenkins_plugin_manager_version }}.jar.sha256"
+    mode: "0644"
+  tags: install
+
+# Resolves plugins (and transitive dependencies) straight to disk — no
+# running Jenkins, no auth, no post-install restart needed. Safe to re-run
+# against the same long-lived VM: skips plugins already on disk.
+# preferIPv4Stack: same reason as Jenkins' own JVM below — guest has no
+# IPv6 route, and Java doesn't consult gai.conf.
+- name: Pre-install Jenkins plugins before first start
+  ansible.builtin.command:
+    cmd: >
+      java -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins-plugin-manager.jar
+      --war {{ jenkins_home }}/jenkins.war
+      --plugin-file {{ jenkins_home }}/plugins.txt
+      --plugin-download-directory {{ jenkins_home }}/plugins
+  become_user: jenkins
+  changed_when: false
+  tags: install
+
+- name: Create systemd unit for Jenkins
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/jenkins.service
+    content: |
+      [Unit]
+      Description=Jenkins Automation Server
+      After=network.target
+
+      [Service]
+      User=jenkins
+      Group=jenkins
+      WorkingDirectory={{ jenkins_home }}
+      Environment="JAVA_HOME={{ java21_home.stdout }}"
+      # Without this, Jenkins falls back to $HOME/.jenkins, not jenkins_home
+      # — none of the secrets/init.groovy.d/casc_configs this role writes
+      # would ever be found at runtime.
+      Environment="JENKINS_HOME={{ jenkins_home }}"
+      Environment="CASC_JENKINS_CONFIG={{ jenkins_home }}/casc_configs"
+      # One line, not Environment=: systemd doesn't shell-split multi-flag
+      # strings. preferIPv4Stack matters because this JVM (Gerrit SSH,
+      # update checks) has its own IPv6 preference, past curl -4/dnf's
+      # reach and past gai.conf, which Java doesn't consult.
+      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins.war --httpPort={{ jenkins_http_port }}
+      Restart=on-failure
+      TimeoutStartSec=300
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: "0644"
+  tags: configure
+
+- name: Create Jenkins init.groovy.d directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/init.groovy.d"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: configure
+
+- name: Deploy Jenkins URL init script
+  ansible.builtin.copy:
+    dest: "{{ jenkins_home }}/init.groovy.d/01-jenkins-url.groovy"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+    content: |
+      import jenkins.model.JenkinsLocationConfiguration
+
+      def locationConfig = JenkinsLocationConfiguration.get()
+      locationConfig.setUrl('http://{{ jenkins_public_ip }}:{{ jenkins_http_port }}/')
+      locationConfig.save()
+  tags: configure
+
+- name: Create JCasC directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/casc_configs"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: configure
+
+# The dummy job's Jenkinsfile is embedded straight from dr_test_jenkinsfile_src
+# (the caller's own checkout) below, not fetched over git — so whatever
+# patchset/branch is actually under test is what runs, no merge-timing gap.
+- name: Check whether the local jenkins-dr-test Jenkinsfile exists
+  ansible.builtin.stat:
+    path: "{{ dr_test_jenkinsfile_src }}"
+  register: dr_test_jenkinsfile_stat
+  delegate_to: localhost
+  become: false
+  tags: configure
+
+- name: Fail if the local jenkins-dr-test Jenkinsfile is missing
+  ansible.builtin.fail:
+    msg: >-
+      {{ dr_test_jenkinsfile_src }} not found — the dummy job's real
+      dynamic-label routing can't be deployed without it.
+  when: not dr_test_jenkinsfile_stat.stat.exists
+  tags: configure
+
+- name: Stage the jenkins-dr-test Jenkinsfile content for JCasC to embed
+  ansible.builtin.copy:
+    src: "{{ dr_test_jenkinsfile_src }}"
+    dest: "{{ jenkins_home }}/dr_test_jenkinsfile.groovy"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  tags: configure
+
+- name: Deploy JCasC configuration
+  ansible.builtin.template:
+    src: jenkins.yaml.j2
+    dest: "{{ jenkins_home }}/casc_configs/jenkins.yaml"
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  no_log: true
+  tags: configure
+
+# JCasC's jobs: block only (re-)runs at Jenkins boot/reload — doing this
+# before Jenkins ever starts means the one boot below recreates it fresh,
+# instead of needing a second restart afterward.
+- name: Remove stale job config so JCasC recreates it from current template
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/jobs/jenkins-dr-test/config.xml"
+    state: absent
+  tags: configure
+
+- name: Create Jenkins .ssh directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/.ssh"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+  tags: configure
+
+- name: Deploy Gerrit SSH private key
+  ansible.builtin.copy:
+    content: "{{ gerrit_ssh_private_key }}"
+    dest: "{{ jenkins_home }}/.ssh/gerrit_id_ed25519"
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  no_log: true
+  tags: configure
+
+# Unconditional restart, not started: every config file above is already
+# on disk by this point, whether this is a first deploy (nothing running
+# yet — systemd just starts it) or a redeploy against a long-lived VM
+# (an already-running Jenkins picks up the new config). Exactly one boot
+# either way — no separate handler-triggered restart afterward.
+- name: Enable and (re)start Jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    daemon_reload: true
+    enabled: true
+    state: restarted
+  tags: configure
+
+- name: Wait for Jenkins to be ready with new JCasC
+  block:
+    - ansible.builtin.uri:
+        url: "http://localhost:{{ jenkins_http_port }}/login"
+        status_code: 200
+      register: jenkins_up
+      retries: 60
+      delay: 10
+      until: jenkins_up.status == 200
+  rescue:
+    # Jenkins never came up in time — surface *why* right here instead of
+    # failing blind. The VM is disposable and torn down right after, so
+    # this is the only chance to see the actual crash/startup error.
+    - name: Dump jenkins service status (Jenkins failed to come up)
+      ansible.builtin.command: systemctl status jenkins --no-pager -l
+      register: jenkins_status_dump
+      changed_when: false
+      failed_when: false
+    - name: Dump jenkins service log (Jenkins failed to come up)
+      ansible.builtin.command: journalctl -u jenkins --no-pager -n 200
+      register: jenkins_journal_dump
+      changed_when: false
+      failed_when: false
+    - ansible.builtin.debug:
+        msg: "{{ jenkins_status_dump.stdout_lines + ['---'] + jenkins_journal_dump.stdout_lines }}"
+    - ansible.builtin.fail:
+        msg: "Jenkins never came up on :{{ jenkins_http_port }} — see service status/log dumped above."
+  tags: configure
+
