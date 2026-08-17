@@ -1,0 +1,43 @@
+# Central Jenkins install + Gerrit-verification credentials. One file, two
+# jobs: it's both the Ansible extra-vars source for the whole Jenkins
+# install (deploy_central_jenkins.sh) AND what run.sh reads for its own
+# real Gerrit push. All fields here are MANDATORY — central always uses a
+# real GerritHub account, there's no mock mode for it.
+#
+# Fill this in and run: sudo ./central_deploy/deploy_central_jenkins.sh central_deploy/gerrit_central.yml
+# NEVER commit this file once real values are filled in.
+
+# Your GerritHub username — used as the Jenkins-Gerrit SSH identity, the
+# identity pushing the verification patchset, AND the Jenkins admin login
+# (no separate admin account — this identity IS the admin).
+gerrit_username: ""
+
+# This identity's Jenkins login password.
+jenkins_admin_password: ""
+
+# Filename under ~/.ssh, on whichever machine runs deploy_central_jenkins.sh
+# / run.sh, of the private key registered to that GerritHub account. The key
+# itself must already be there — this only names it.
+# Generate with: ssh-keygen -t ed25519 -f ~/.ssh/gerrit_jenkins_key -C "jenkins@swiftacular"
+# Register gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+ssh_key_name: ""
+
+# Email registered to that GerritHub account (Settings > Email Addresses).
+# Used as the commit identity when pushing the verification patchset —
+# Gerrit rejects commits whose committer email isn't registered.
+email: ""
+
+# Git commit author name for the verification patchset.
+display_name: ""
+
+# A fixed Change-Id (Ixxxx...) on a permanent Gerrit change on
+# davidsaOpenu/swiftacular, reserved for pushing verification patchsets
+# onto. Embedded directly in every verification commit, so each push lands
+# as a new patchset on that same change instead of opening a new one.
+change_id: ""
+
+# Optional — omit entirely to use the real repo (the role's default). Don't
+# add this key with an empty value: Ansible's extra-vars override the role
+# default even when blank, so an empty string here permanently blanks it
+# out instead of falling back. run.sh --local-repo sets this itself.
+# dummy_job_repo_url: ""
