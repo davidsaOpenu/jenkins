@@ -83,7 +83,10 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# BYPASS PROXIES
+# BYPASS PROXIES — env vars duplicated here (also unset by gerrit_key_lib.sh,
+# sourced below) as defense-in-depth in case sourcing order ever changes;
+# git-specific proxy config only needs clearing here, since this script is
+# the only one of the three that does a git clone.
 # ---------------------------------------------------------------------------
 unset http_proxy https_proxy ftp_proxy all_proxy no_proxy
 unset HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY NO_PROXY
@@ -118,26 +121,20 @@ source "${SECRETS_FILE}"
 # ---------------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------------
-GERRIT_HOST="review.gerrithub.io"
-GERRIT_PORT="29418"
-GERRIT_API_BASE="https://${GERRIT_HOST}/a"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/opt/ci/gerrit_key_lib.sh
+source "${SCRIPT_DIR}/gerrit_key_lib.sh"
+# shellcheck source=/opt/ci/gerrit_users.sh
+source "${SCRIPT_DIR}/gerrit_users.sh"
+
 REPO_PATH="davidsaOpenu/swiftacular"     # <org>/<repo> on GerritHub
 REPO_NAME="swiftacular"
 TARGET_BRANCH="master"
 
-# One entry per user: "gerrit_username|email|display_name|token_var|change_id"
-#   gerrit_username = account used in the clone URL (ssh://<user>@host)
-#   email           = must be a verified email on that GerritHub account
-#   token_var       = name of the shell variable (set by SECRETS_FILE)
-#                      holding that user's HTTP token
-#   change_id       = fixed Gerrit Change-Id so repeated runs update the
-#                      SAME change (new patch set) instead of creating a
-#                      new change every run
-USERS=(
-  "jenkins-osw|osw.jenkins@gmail.com|OSW Jenkins|JENKINS_OSW_TOKEN|I7765583f6b6bbe0543e804c749234dcdd95ef140"
-  "jenkins-test-userA|jenkins.test.userA@gmail.com|Jenkins UserA|JENKINS_USERA_TOKEN|Ic719111d55d1a0ed4511c70e3d3f6be21e098d25"
-  "jenkins-test-userB|jenkins.test.userB@gmail.com|Jenkins UserB|JENKINS_USERB_TOKEN|Ibc68ac9afe6cf0170e32bf3ac192a9854026a529"
-)
+# USERS comes from gerrit_users.sh: one entry per identity, shape
+# "gerrit_username|ssh_key_name|email|display_name|change_id" — the
+# token var for each is resolved via token_var_for() (gerrit_key_lib.sh),
+# not stored here.
 
 # mktemp -d creates this as mode 0700, owned by root (the current euid) —
 # unreadable by jenkins or anything else, no extra chmod needed.
@@ -148,43 +145,6 @@ OVERALL_STATUS=0
 # ---------------------------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------------------------
-
-json_field() {
-  local file="$1" field="$2"
-  tail -n +2 "${file}" 2>/dev/null | grep -oE "\"${field}\"[[:space:]]*:[[:space:]]*[0-9]+" \
-    | grep -oE '[0-9]+$' | head -n1
-}
-
-register_ssh_key() {
-  local gerrit_user="$1" token="$2" pubkey_file="$3"
-  local resp_file="${WORK_ROOT}/${gerrit_user}-add-resp.json"
-  local http_code
-  http_code=$(curl -sS -o "${resp_file}" -w '%{http_code}' \
-    -u "${gerrit_user}:${token}" \
-    -H "Content-Type: text/plain" \
-    --data-binary "@${pubkey_file}" \
-    "${GERRIT_API_BASE}/accounts/self/sshkeys")
-
-  if [[ "${http_code}" != "200" && "${http_code}" != "201" ]]; then
-    echo "ERROR: failed to register SSH key for ${gerrit_user} (HTTP ${http_code})" >&2
-    return 1
-  fi
-  json_field "${resp_file}" "seq"
-}
-
-deregister_ssh_key() {
-  local gerrit_user="$1" token="$2" seq="$3"
-  [[ -z "${seq}" ]] && return 0
-  local http_code
-  http_code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
-    -u "${gerrit_user}:${token}" \
-    "${GERRIT_API_BASE}/accounts/self/sshkeys/${seq}")
-  if [[ "${http_code}" != "204" && "${http_code}" != "200" ]]; then
-    echo "WARNING: failed to deregister SSH key seq=${seq} for ${gerrit_user} (HTTP ${http_code})" >&2
-  else
-    echo "Deregistered SSH key seq=${seq} for ${gerrit_user}."
-  fi
-}
 
 # ---------------------------------------------------------------------------
 # PER-USER WORKFLOW
@@ -208,7 +168,8 @@ process_user() {
   fi
   chmod 600 "${KEY_PATH}"
 
-  SEQ="$(register_ssh_key "${GERRIT_USER}" "${TOKEN}" "${KEY_PATH}.pub")"
+  local RESP_FILE="${WORK_ROOT}/${GERRIT_USER}-add-resp.json"
+  SEQ="$(register_ssh_key "${GERRIT_USER}" "${TOKEN}" "${KEY_PATH}.pub" "${RESP_FILE}")"
   if [[ -z "${SEQ}" ]]; then
     echo "ERROR: could not obtain key seq id for ${GERRIT_USER}" >&2
     return 1
@@ -242,13 +203,17 @@ process_user() {
 
     hook_file="$(git rev-parse --git-dir)/hooks/commit-msg"
     mkdir -p "$(dirname "${hook_file}")"
-    scp "${SSH_OPTS[@]}" -P "${GERRIT_PORT}" \
+    # -O: force legacy SCP protocol — GerritHub's sshd doesn't support the
+    # SFTP subsystem OpenSSH 9.0+ clients default scp to.
+    scp -O "${SSH_OPTS[@]}" -P "${GERRIT_PORT}" \
         "${GERRIT_USER}@${GERRIT_HOST}:hooks/commit-msg" "${hook_file}" || exit 1
     chmod +x "${hook_file}"
 
     git config user.email "${EMAIL}"
     git config user.name "${DISPLAY_NAME}"
 
+    # Under dr_test/ so only jenkins-dr-test triggers, never the real
+    # swiftacular project job (see commit 384345a).
     mkdir -p dr_test
     test_file="dr_test/test-from-${GERRIT_USER}.txt"
     echo "Test from ${USERNAME_PART} at $(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${test_file}"
@@ -275,13 +240,14 @@ Change-Id: ${CHANGE_ID}"
 # MAIN LOOP
 # ---------------------------------------------------------------------------
 for entry in "${USERS[@]}"; do
-  IFS='|' read -r GERRIT_USER EMAIL DISPLAY_NAME TOKEN_VAR CHANGE_ID <<< "${entry}"
+  IFS='|' read -r GERRIT_USER _KEY_NAME EMAIL DISPLAY_NAME CHANGE_ID <<< "${entry}"
 
   echo "============================================================"
   echo "User:        ${DISPLAY_NAME} <${EMAIL}>"
   echo "Gerrit user: ${GERRIT_USER}"
   echo "============================================================"
 
+  TOKEN_VAR="$(token_var_for "${GERRIT_USER}")" || { OVERALL_STATUS=1; echo; continue; }
   TOKEN="${!TOKEN_VAR:-}"
   if [[ -z "${TOKEN}" ]]; then
     echo "ERROR: ${TOKEN_VAR} is not set in ${SECRETS_FILE} — skipping ${DISPLAY_NAME}" >&2
