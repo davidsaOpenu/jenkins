@@ -1,0 +1,37 @@
+# Central Jenkins install + Gerrit-verification credentials. One file, two
+# jobs: it's both the Ansible extra-vars source for the whole Jenkins
+# install (deploy_central_jenkins.sh) AND what run.sh reads for its own
+# real Gerrit push. All fields here are MANDATORY — central always uses a
+# real GerritHub account, there's no mock mode for it.
+#
+# Fill this in and run: sudo ./central_deploy/deploy_central_jenkins.sh central_deploy/gerrit_central.yml
+# NEVER commit this file once real values are filled in.
+
+jenkins_admin_user: ""
+jenkins_admin_password: ""
+
+# Your GerritHub username (used both as the Jenkins-Gerrit SSH identity and,
+# by run.sh, as the identity pushing the verification patchset).
+gerrit_ssh_username: ""
+
+# Email registered to that GerritHub account (Settings > Email Addresses).
+# run.sh uses this as the commit identity when pushing the verification
+# patchset — Gerrit rejects commits whose committer email isn't registered.
+gerrit_email: ""
+
+# Private key of the SSH key pair registered in GerritHub.
+# Generate with: ssh-keygen -t ed25519 -f gerrit_jenkins_key -C "jenkins@swiftacular"
+# Register gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+gerrit_ssh_private_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  paste_your_private_key_here
+  -----END OPENSSH PRIVATE KEY-----
+
+# A permanent Gerrit change on davidsaOpenu/swiftacular reserved for
+# pushing verification patchsets onto.
+dummy_change_number: ""
+
+# Optional — leave blank to use the real repo (the role's default). Set only
+# when testing your own working tree (run.sh --local-repo sets this
+# automatically to the git-daemon URL it starts; don't set it by hand).
+dummy_job_repo_url: ""

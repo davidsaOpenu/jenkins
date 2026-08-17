@@ -161,7 +161,26 @@ def runPipeline() {
 
     protectedStage('Run'){
         dir('jenkins') {
-            sh './run.sh'
+            // run.sh takes no arguments — it always reads
+            // central_deploy/gerrit_central.yml / gerrit_agents.yml. Both
+            // credentials are mandatory. Both are recreated automatically
+            // by deploy_central_jenkins.sh via JCasC — run-sh-gerrit-agents
+            // only if its optional gerrit_agents.yml argument was given,
+            // otherwise it needs its usual one-time manual upload (see
+            // README.md). Either way, copy the injected temp files into
+            // those fixed paths in this checkout before calling it — never
+            // committed, this checkout is thrown away after the build
+            // either way.
+            withCredentials([
+                file(credentialsId: 'run-sh-gerrit-central', variable: 'CENTRAL_FILE'),
+                file(credentialsId: 'run-sh-gerrit-agents', variable: 'AGENTS_FILE')
+            ]) {
+                sh '''
+                    cp "$CENTRAL_FILE" central_deploy/gerrit_central.yml
+                    cp "$AGENTS_FILE" central_deploy/gerrit_agents.yml
+                    ./run.sh
+                '''
+            }
         }
     }
 

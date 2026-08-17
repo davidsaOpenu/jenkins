@@ -1,0 +1,127 @@
+jenkins:
+  systemMessage: "Swiftacular CI - Configured as Code"
+  numExecutors: 2
+  # Gives the built-in node the same identity-derived label every other
+  # agent gets (see jobs/swiftacular-dummy/Jenkinsfile's agentLabel()) —
+  # central's own Gerrit pushes route here with no special-casing anywhere.
+  labelString: "{{ gerrit_ssh_username | regex_replace('[^A-Za-z0-9]+', '-') }}"
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "GERRIT_OWNER_USERNAME"
+            value: "{{ gerrit_ssh_username }}"
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "{{ jenkins_admin_user }}"
+          password: "{{ jenkins_admin_password }}"
+        # A real login for central's own Gerrit identity — same account the
+        # dummy job's Approval stage checks against, same mechanism every
+        # student account already uses.
+        - id: "{{ gerrit_ssh_username }}"
+          password: "{{ jenkins_admin_password }}"
+
+  authorizationStrategy:
+    # admin: full control. Everyone else logged in: read-only, no Job/Build.
+    globalMatrix:
+      permissions:
+        - "USER:Overall/Administer:{{ jenkins_admin_user }}"
+        - "GROUP:Overall/Read:authenticated"
+        - "GROUP:Job/Read:authenticated"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "gerrit-ssh-key"
+              username: "{{ gerrit_ssh_username }}"
+              privateKeySource:
+                directEntry:
+                  # Block scalar, not a quoted string: a real (multi-line PEM)
+                  # key inside double quotes gets YAML line-folded — newlines
+                  # become spaces and the credential is silently corrupted.
+                  privateKey: |
+{{ gerrit_ssh_private_key | trim | indent(20, true) }}
+          # Recreated on every deploy from central_accounts_file — the daily
+          # self-check job's credential, no manual upload needed.
+          - file:
+              scope: GLOBAL
+              id: "run-sh-gerrit-central"
+              fileName: "gerrit_central.yml"
+              secretBytes: "{{ lookup('file', central_accounts_file) | b64encode }}"
+{% if agents_accounts_file %}
+          # Same as run-sh-gerrit-central above, but only present when
+          # deploy_central_jenkins.sh was given a gerrit_agents.yml —
+          # otherwise this stays whatever it already was (manual upload).
+          - file:
+              scope: GLOBAL
+              id: "run-sh-gerrit-agents"
+              fileName: "gerrit_agents.yml"
+              secretBytes: "{{ lookup('file', agents_accounts_file) | b64encode }}"
+{% endif %}
+
+# "unclassified" isn't a name we chose — it's JCasC's fixed key for any
+# plugin's global config that doesn't declare its own category (both
+# Location and gerrit-trigger's server config fall under Jenkins core's
+# built-in "Unclassified" GlobalConfigurationCategory). No other key name
+# would be recognized here.
+unclassified:
+  location:
+    url: "http://{{ jenkins_public_ip }}:{{ jenkins_http_port }}/"
+  gerrit-trigger:
+    servers:
+      - name: "review.gerrithub.io"
+        # Central always has a real, registered Gerrit account now — always
+        # connect on startup.
+        noConnectionOnStartup: false
+        config:
+          gerritHostName: "review.gerrithub.io"
+          gerritSshPort: 29418
+          gerritUserName: "{{ gerrit_ssh_username }}"
+          gerritAuthKeyFile: "{{ jenkins_home }}/.ssh/gerrit_id_ed25519"
+          gerritFrontEndUrl: "https://review.gerrithub.io/"
+          gerritBuildStartedVerifiedValue: 0
+          gerritBuildStartedCodeReviewValue: 0
+          gerritBuildSuccessfulVerifiedValue: 1
+          gerritBuildSuccessfulCodeReviewValue: 0
+          gerritBuildFailedVerifiedValue: -1
+          gerritBuildFailedCodeReviewValue: 0
+          gerritBuildUnstableVerifiedValue: 0
+          gerritBuildUnstableCodeReviewValue: 0
+          gerritBuildNotBuiltVerifiedValue: 0
+          gerritBuildNotBuiltCodeReviewValue: 0
+
+jobs:
+  - script: |
+      pipelineJob('swiftacular-dummy') {
+        description('Dummy job - verifies Gerrit trigger wiring for swiftacular. No VM, just ls.')
+        triggers {
+          gerrit {
+            events {
+              patchsetCreated()
+            }
+            project('plain:davidsaOpenu/swiftacular', ['plain:master'])
+          }
+        }
+        definition {
+          // No fallback — the "Fail if the dummy job Jenkinsfile is
+          // missing" task earlier in this role guarantees this file exists
+          // on dummy_job_repo_url's master before this template is ever
+          // rendered.
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('{{ dummy_job_repo_url }}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('jobs/swiftacular-dummy/Jenkinsfile')
+          }
+        }
+      }
