@@ -1,0 +1,31 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # deploy_agent.sh never touches /vagrant — the default synced folder just
+  # forces an NFS-client install on every boot for nothing.
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.qemu_use_session = false
+  end
+
+  {
+    "node-a" => "192.168.100.171",
+    "node-b" => "192.168.100.172",
+  }.each do |name, ip|
+    config.vm.define name do |node|
+      # Pre-built via run_common.sh's ensure_java_box (Java 21 + EPEL
+      # already installed) — never fetched over the network.
+      node.vm.box      = "centos9-java21"
+      node.vm.hostname = name
+
+      node.vm.provider :libvirt do |lv|
+        lv.memory = 1024
+        lv.cpus   = 1
+      end
+
+      node.vm.network :private_network, ip: ip, netmask: "255.255.255.0"
+    end
+  end
+end
