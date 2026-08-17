@@ -1,0 +1,113 @@
+jenkins:
+  systemMessage: "Swiftacular CI - Configured as Code"
+  numExecutors: 2
+  # Gives the built-in node the same identity-derived label every other
+  # agent gets (see jobs/jenkins-dr-test/Jenkinsfile's agentLabel()) —
+  # central's own Gerrit pushes route here with no special-casing anywhere.
+  labelString: "{{ gerrit_username | regex_replace('[^A-Za-z0-9]+', '-') }}"
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "GERRIT_OWNER_USERNAME"
+            value: "{{ gerrit_username }}"
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        # Central's own Gerrit identity IS the admin — same account the
+        # dummy job's Approval stage checks against, same mechanism every
+        # student account already uses. No separate admin login.
+        - id: "{{ gerrit_username }}"
+          password: "{{ jenkins_admin_password }}"
+
+  authorizationStrategy:
+    # Central's Gerrit identity: full control. Everyone else logged in:
+    # read + start/stop their own builds (Job/Build covers Retrigger,
+    # which replays with the original Gerrit identity attached — the
+    # Jenkinsfile's Approval stage rejects any build with no such
+    # identity, so a context-less manual trigger can't go anywhere).
+    globalMatrix:
+      permissions:
+        - "USER:Overall/Administer:{{ gerrit_username }}"
+        - "GROUP:Overall/Read:authenticated"
+        - "GROUP:Job/Read:authenticated"
+        - "GROUP:Job/Build:authenticated"
+        - "GROUP:Job/Cancel:authenticated"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "gerrit-ssh-key"
+              username: "{{ gerrit_username }}"
+              privateKeySource:
+                directEntry:
+                  # Block scalar, not a quoted string: a real (multi-line PEM)
+                  # key inside double quotes gets YAML line-folded — newlines
+                  # become spaces and the credential is silently corrupted.
+                  privateKey: |
+{{ gerrit_ssh_private_key | trim | indent(20, true) }}
+          # Recreated on every deploy from central_accounts_file. Node A/B
+          # need no equivalent — run.sh derives their identities straight
+          # from scripts/gerrit_multi_user_push.sh.
+          - file:
+              scope: GLOBAL
+              id: "run-sh-gerrit-central"
+              fileName: "gerrit_central.yml"
+              secretBytes: "{{ lookup('file', central_accounts_file) | b64encode }}"
+
+# "unclassified" isn't a name we chose — it's JCasC's fixed key for any
+# plugin's global config with no own category (Location and gerrit-trigger
+# both fall under Jenkins core's "Unclassified" category).
+unclassified:
+  location:
+    url: "http://{{ jenkins_public_ip }}:{{ jenkins_http_port }}/"
+  gerrit-trigger:
+    servers:
+      - name: "review.gerrithub.io"
+        # Central always has a real, registered Gerrit account now — always
+        # connect on startup.
+        noConnectionOnStartup: false
+        config:
+          gerritHostName: "review.gerrithub.io"
+          gerritSshPort: 29418
+          gerritUserName: "{{ gerrit_username }}"
+          gerritAuthKeyFile: "{{ jenkins_home }}/.ssh/gerrit_id_ed25519"
+          gerritFrontEndUrl: "https://review.gerrithub.io/"
+          gerritBuildStartedVerifiedValue: 0
+          gerritBuildStartedCodeReviewValue: 0
+          gerritBuildSuccessfulVerifiedValue: 1
+          gerritBuildSuccessfulCodeReviewValue: 0
+          gerritBuildFailedVerifiedValue: -1
+          gerritBuildFailedCodeReviewValue: 0
+          gerritBuildUnstableVerifiedValue: 0
+          gerritBuildUnstableCodeReviewValue: 0
+          gerritBuildNotBuiltVerifiedValue: 0
+          gerritBuildNotBuiltCodeReviewValue: 0
+
+jobs:
+  - script: |
+      pipelineJob('jenkins-dr-test') {
+        description('Dummy job - verifies Gerrit trigger wiring for swiftacular. No VM, just ls.')
+        triggers {
+          gerrit {
+            events {
+              patchsetCreated()
+            }
+            project('plain:davidsaOpenu/swiftacular', ['plain:master'])
+          }
+        }
+        definition {
+          // Embedded straight from the caller's own checkout (staged to
+          // this path by the "Stage the jenkins-dr-test Jenkinsfile
+          // content" task) — no git fetch, so whatever patchset/branch is
+          // actually under test is what runs here, not real master.
+          cps {
+            script(new File('{{ jenkins_home }}/dr_test_jenkinsfile.groovy').text)
+            sandbox(true)
+          }
+        }
+      }
