@@ -1,0 +1,18 @@
+# HTTPS front door for Jenkins — the only way in from outside; Jenkins
+# itself listens on localhost only (see jenkins.service in tasks/main.yml).
+server {
+    listen 443 ssl;
+    ssl_certificate     /etc/nginx/tls/jenkins.crt;
+    ssl_certificate_key /etc/nginx/tls/jenkins.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:{{ jenkins_http_port }};
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        # WebSocket — agents connect with -webSocket.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
