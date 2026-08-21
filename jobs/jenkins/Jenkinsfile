@@ -95,7 +95,7 @@ pipeline {
         always {
             script {
                 dir('jenkins/scripts') {
-                    sh './cleanup'
+                    sh './cleanup.sh'
                 }
            }
         }
