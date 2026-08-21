@@ -94,10 +94,10 @@ pipeline {
     post {
         always {
             script {
-                dir('swiftacular') {
-                    sh './cleanup.sh'
+                dir('jenkins/scripts') {
+                    sh 'pwd; ls'
                 }
-            }
+           }
         }
     }
 }
@@ -160,9 +160,8 @@ def runPipeline() {
 
 
     protectedStage('Run'){
-        dir('jenkins') {
-            sh './run.sh'
+        dir('jenkins/scripts') {
+            sh 'pwd; ls'
         }
     }
-
 }
