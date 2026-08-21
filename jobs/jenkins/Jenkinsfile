@@ -157,8 +157,6 @@ def runPipeline() {
         }
     }
 
-
-
     protectedStage('Run'){
         dir('jenkins/scripts') {
             sh './run.sh'
