@@ -26,6 +26,9 @@ pipeline {
                 ], [
                     compareType: 'ANT',
                     pattern: 'presentations/**'
+                ], [
+                    compareType: 'ANT',
+                    pattern: 'dr_test/**'
                 ]]
             ]],
             serverName: 'review.gerrithub.io',

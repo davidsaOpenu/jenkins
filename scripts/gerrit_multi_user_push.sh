@@ -80,8 +80,9 @@ for entry in "${USERS[@]}"; do
   # 3. Set local identity for this clone only
   git config user.email "${EMAIL}"
   git config user.name "${DISPLAY_NAME}"
-  # 4. Add a test file
-  test_file="test-from-${KEY_NAME}.txt"
+  # 4. Add a test file, under dr_test/ so it only triggers jenkins-dr-test
+  mkdir -p dr_test
+  test_file="dr_test/test-from-${KEY_NAME}.txt"
   echo "Test from ${USERNAME_PART} at $(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${test_file}"
   git add "${test_file}"
   # 5. Commit locally
