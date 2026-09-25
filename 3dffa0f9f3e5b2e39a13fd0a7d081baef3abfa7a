@@ -1,0 +1,354 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31f464e7_9c7ab2fb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Thanks for working on this.\n\nNot asking to split the change at this stage.\n\nIn addition to inline comments:\n\n1) Duplication: get_crumb (3 copies), the secrets permission check (3), the proxy unset block (7), and the virsh teardown (3). Move them into one shared lib.\n2) Stale references:\n\n- central_deploy/students.yaml.example L13: the \"project\" comment refers to resolve_job_name() in setup_students.sh, which doesn\u0027t exist. The header comment (L5) also says existing \"jobs\" are skipped, but no jobs are created. Fix: describe \"project\" as a free-text label for the instructor\u0027s reference only, and drop \"jobs\" from L5.\n\n- central_deploy/reset_students.sh L2: says \"mock central Jenkins\". Fix: change to \"central Jenkins\".\n\n- student_deploy/secrets.yml.example L4-5: describes gerrit_owner_username as used by a \"Check-owner gating stage\", which no longer exists (routing is now by agent label). Fix: remove the field, or re-describe it (see \"Unused code\" below).\n\n- deploy_verify.sh L57 (register_gerrit_trigger comment): says GERRIT_CHANGE_OWNER_USERNAME is null, but the Jenkinsfile uses GERRIT_PATCHSET_UPLOADER_USERNAME. Fix: use the same variable name as the Jenkinsfile.\n\n- jobs/jenkins-dr-test/Jenkinsfile L69-71: the comment says submitter: doesn\u0027t block anyone under loggedInUsersCanDoAnything, but the authorization strategy is now globalMatrix. Fix: update the comment to match the current strategy and the actual behavior of submitter:.\n\n- central_deploy/gerrit_central.yml.example L3-4: says run.sh reads this file for its own Gerrit push, but run.sh now takes identities from scripts/gerrit_users.sh. Fix: state that this file is used only by deploy_central_jenkins.sh.\n\n3. Unused code:\n\n- central_deploy/roles/jenkins/templates/jenkins.yaml.j2 L8-12 (globalNodeProperties GERRIT_OWNER_USERNAME) and student_deploy/templates/jenkins-agent.service.j2 L7 (Environment\u003dGERRIT_OWNER_USERNAME):",
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e1071d73_ca7a18f6",
+        "filename": "central_deploy/deploy_central_jenkins.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: ip route get 1.1.1.1 picks the default-route NIC, which may be wrong on a multi-homed server. The result is baked into the Jenkins URL and given to every student.\nFix: Add a jenkins_url or jenkins_public_ip field to gerrit_central.yml and use detection only as a fallback.",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 62,
+        "endChar": 1
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7aa0bc75_a132e195",
+        "filename": "central_deploy/reset_students.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "It deletes every student listed in the given file. To retire last semester\u0027s students, you need last semester\u0027s file. What happens if someone has deleted it? Maybe it would be worth adding the possibility to list students and specify which users to delete?",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 1
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12a962dc_0072a2df",
+        "filename": "central_deploy/roles/jenkins/tasks/main.yml",
+        "patchSetId": 15
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: The first start happens with no plugins, so JCasC isn\u0027t applied and the authorization strategy is Unsecured. Anyone reaching :8080 is admin until plugins install and Jenkins restarts. Since the production deploy is a first boot by definition, this window always occurs. In addition, 00-admin-password.groovy recreates an admin user and replaces the realm on every boot.\nFix: Pre-install plugins with jenkins-plugin-cli --plugin-file plugins.txt into {{ jenkins_home }}/plugins before the first start. Then delete 00-admin-password.groovy, the jenkins-cli.jar download, and the post-install restart.",
+      "range": {
+        "startLine": 223,
+        "startChar": 0,
+        "endLine": 240,
+        "endChar": 17
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8884def_b998df4e",
+        "filename": "central_deploy/roles/jenkins/templates/jenkins.yaml.j2",
+        "patchSetId": 15
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: Students get read-only access, but the DoD asks for start/stop. If you add Job/Build, a manual build has no Gerrit user, so agentLabel(null) returns \u0027built-in\u0027 and a student\u0027s build runs on the controller, which holds the admin password and the Gerrit key.\nFix: Grant GROUP:Job/Build:authenticated and GROUP:Job/Cancel:authenticated. A group grant means each semester\u0027s rotation needs no JCasC change or redeploy.",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 31,
+        "endChar": 40
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1cf6db21_6cf84579",
+        "filename": "central_deploy/roles/jenkins/templates/jenkins.yaml.j2",
+        "patchSetId": 15
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: The run-sh-gerrit-central file credential stores all of gerrit_central.yml, including the admin password, in production. Where is it used?\nFix: If not used, let\u0027s delete the credential.",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 84
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d06f3dc6_e2cc9a8d",
+        "filename": "central_deploy/roles/jenkins/templates/jenkins.yaml.j2",
+        "patchSetId": 15
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: Student logins and the agent.jar download travel over cleartext HTTP. The inbound TCP agent port isn\u0027t set in JCasC, so it depends on defaults and firewall luck.\nFix: Put an HTTPS reverse proxy (nginx) in front of Jenkins and have agents connect with -webSocket over 443.",
+      "range": {
+        "startLine": 62,
+        "startChar": 0,
+        "endLine": 62,
+        "endChar": 66
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "208bf0ff_6070a98b",
+        "filename": "central_deploy/setup_students.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: An existing user is skipped, so their password never updates. An existing node is skipped, so its label and config never update. Any node-creation failure (403, network error) is reported as \"already exists\".\nFix: Replace form-scraping with one idempotent Groovy script posted to /scriptText. It can create or update the user and password, create or update the node, and print computer.jnlpMac. That also replaces the fragile .jnlp grep at L120–126.",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 8
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2345d05b_e3689ae5",
+        "filename": "central_deploy/setup_students.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "same here",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 116,
+        "endChar": 70
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12b2b89f_9a019f09",
+        "filename": "central_deploy/students.yaml.example",
+        "patchSetId": 15
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Why is admin_user in central_deploy/students.yaml.example?",
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c81a256_d627e295",
+        "filename": "central_deploy/students.yaml.example",
+        "patchSetId": 15
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "In general, we have a stage of Jenkins deployment where admin-related config is specified. This step runs once for disaster recovery. Disaster recovery runs manually, and the script that runs must ask for a configuration (initial_setup_info.yaml or something similar, but not students.yaml) with admin credentials, port number, URL, etc. The same script must also run from CI, taking dummy credentials, port number, URL, etc., for the CI run.\n\nAnother stage: a script that deletes students and adds students every semester. The same script runs from CI and manually every semester (e.g., taking /students.yaml as a parameter for addition).\n \nA third stage is connecting student machines as agents. In CI, we simulate them as VMs. In real life, we again run the script manually. We want the same script to work in two modes (CI/manual) to keep things in one place (one mechanism, different parameters).",
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08cfb917_35f60837",
+        "filename": "jobs/jenkins-dr-test/Jenkinsfile",
+        "patchSetId": 15
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "fail on null instead of returning \u0027built-in\u0027, or route to the label of the user who started the build (UserIdCause).",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 1
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8fb0e580_2269dca0",
+        "filename": "scripts/sudo/register_central_key.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: It deletes every student listed in the given file. To retire last semester\u0027s students you need last semester\u0027s file, and there\u0027s no way to remove a single student.\nFix: Add a setup_students.sh --sync mode. It lists nodes (/computer/api/json) and users, then deletes any not in the current students.yaml, excluding the admin and built-in. Also add a remove_student.sh \u003cname\u003e.",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 0
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a817ed51_bc23235e",
+        "filename": "scripts/sudo/register_central_key.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Please use a dedicated key name, for example id_osw_jenkins_dr_ephemeral, in gerrit_users.sh for the harness. Write STATE_FILE immediately after L92.",
+      "range": {
+        "startLine": 92,
+        "startChar": 0,
+        "endLine": 120,
+        "endChar": 0
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "520cd357_303aedb9",
+        "filename": "student_deploy/deploy_agent.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "Problem: The script and playbook use dnf, EPEL, and java-21-openjdk only. Students\u0027 machines are likely to be Ubuntu, macOS, or other systems.\nFix: Use ansible.builtin.package with per-distro Java package names, or state the supported OSes in CONNECT_AGENT.md. A plain-shell (non-Ansible) install path would be simpler for students.",
+      "range": {
+        "startLine": 25,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 2
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6eadbb7_856028c7",
+        "filename": "student_deploy/deploy_jenkins.yaml",
+        "patchSetId": 15
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-25T05:35:20Z",
+      "side": 1,
+      "message": "See the comment student_deploy/deploy_agent.sh L24–29",
+      "range": {
+        "startLine": 20,
+        "startChar": 1,
+        "endLine": 25,
+        "endChar": 0
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
