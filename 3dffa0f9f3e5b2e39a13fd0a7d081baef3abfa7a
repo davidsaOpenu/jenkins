@@ -41,6 +41,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "20365d2a_668f929c",
+        "filename": "central_deploy/deploy_central_jenkins.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. jenkins_public_ip in the config is used when set; detection is only the fallback.",
+      "parentUuid": "e1071d73_ca7a18f6",
+      "range": {
+        "startLine": 53,
+        "startChar": 0,
+        "endLine": 62,
+        "endChar": 1
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7aa0bc75_a132e195",
@@ -54,6 +78,30 @@
       "writtenOn": "2026-09-25T05:35:20Z",
       "side": 1,
       "message": "It deletes every student listed in the given file. To retire last semester\u0027s students, you need last semester\u0027s file. What happens if someone has deleted it? Maybe it would be worth adding the possibility to list students and specify which users to delete?",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 1
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2395ce98_0f7b822b",
+        "filename": "central_deploy/reset_students.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. The script lists students from Jenkins itself.",
+      "parentUuid": "7aa0bc75_a132e195",
       "range": {
         "startLine": 70,
         "startChar": 0,
@@ -87,6 +135,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e744317_56330220",
+        "filename": "central_deploy/roles/jenkins/tasks/main.yml",
+        "patchSetId": 15
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. Plugins are pre-installed with jenkins-plugin-manager before the first start, so JCasC applies on boot once",
+      "parentUuid": "12a962dc_0072a2df",
+      "range": {
+        "startLine": 223,
+        "startChar": 0,
+        "endLine": 240,
+        "endChar": 17
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e8884def_b998df4e",
@@ -110,6 +182,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "986ba5d1_191b8d53",
+        "filename": "central_deploy/roles/jenkins/templates/jenkins.yaml.j2",
+        "patchSetId": 15
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. Build and Cancel granted to authenticated. A build with no Gerrit uploader is rejected at\nApproval, and agentLabel fails on null.",
+      "parentUuid": "e8884def_b998df4e",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 31,
+        "endChar": 40
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1cf6db21_6cf84579",
@@ -123,6 +219,30 @@
       "writtenOn": "2026-09-25T05:35:20Z",
       "side": 1,
       "message": "Problem: The run-sh-gerrit-central file credential stores all of gerrit_central.yml, including the admin password, in production. Where is it used?\nFix: If not used, let\u0027s delete the credential.",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 84
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ae9cbaf_72205d45",
+        "filename": "central_deploy/roles/jenkins/templates/jenkins.yaml.j2",
+        "patchSetId": 15
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. It was unused; deleted.",
+      "parentUuid": "1cf6db21_6cf84579",
       "range": {
         "startLine": 51,
         "startChar": 0,
@@ -179,6 +299,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6a8ad30_19afb557",
+        "filename": "central_deploy/setup_students.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. One Groovy script via /scriptText creates or updates users and nodes and returns jnlpMac.",
+      "parentUuid": "208bf0ff_6070a98b",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 8
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2345d05b_e3689ae5",
@@ -202,6 +346,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "20cdfe1b_d999c12b",
+        "filename": "central_deploy/setup_students.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done, same change.",
+      "parentUuid": "2345d05b_e3689ae5",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 116,
+        "endChar": 70
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "12b2b89f_9a019f09",
@@ -215,6 +383,24 @@
       "writtenOn": "2026-09-25T05:35:20Z",
       "side": 1,
       "message": "Why is admin_user in central_deploy/students.yaml.example?",
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef06d0d2_bb56c6b3",
+        "filename": "central_deploy/students.yaml.example",
+        "patchSetId": 15
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. Removed. The scripts take URL and admin login from the environment vars, or ask.",
+      "parentUuid": "12b2b89f_9a019f09",
       "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -249,6 +435,30 @@
       "writtenOn": "2026-09-25T05:35:20Z",
       "side": 1,
       "message": "fail on null instead of returning \u0027built-in\u0027, or route to the label of the user who started the build (UserIdCause).",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 1
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "453fb3c6_2be168fd",
+        "filename": "jobs/jenkins-dr-test/Jenkinsfile",
+        "patchSetId": 15
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. Fails instead of returning built-in.",
+      "parentUuid": "08cfb917_35f60837",
       "range": {
         "startLine": 4,
         "startChar": 0,
@@ -328,6 +538,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "faa574c8_f6694554",
+        "filename": "student_deploy/deploy_agent.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done. Ansible is installed with dnf, apt, zypper or pacman;",
+      "parentUuid": "520cd357_303aedb9",
+      "range": {
+        "startLine": 25,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 2
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a6eadbb7_856028c7",
@@ -341,6 +575,30 @@
       "writtenOn": "2026-09-25T05:35:20Z",
       "side": 1,
       "message": "See the comment student_deploy/deploy_agent.sh L24–29",
+      "range": {
+        "startLine": 20,
+        "startChar": 1,
+        "endLine": 25,
+        "endChar": 0
+      },
+      "revId": "3dffa0f9f3e5b2e39a13fd0a7d081baef3abfa7a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f554d63e_a3a2da7c",
+        "filename": "student_deploy/deploy_jenkins.yaml",
+        "patchSetId": 15
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1039552
+      },
+      "writtenOn": "2026-10-06T23:21:45Z",
+      "side": 1,
+      "message": "Done, same change.",
+      "parentUuid": "a6eadbb7_856028c7",
       "range": {
         "startLine": 20,
         "startChar": 1,
