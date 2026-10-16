@@ -28,6 +28,13 @@ source "${SCRIPT_DIR}/gerrit_users.sh"
 
 STATE_FILE="/opt/ci/state/central_key_seq"
 
+# Remove the private key register_central_key.sh left in jenkins' ~/.ssh,
+# so it doesn't sit there as a standing credential between runs. Done AS
+# jenkins (see register_central_key.sh) so a symlinked path can't make
+# root delete anything jenkins couldn't already delete.
+IFS='|' read -r GERRIT_USER KEY_NAME _EMAIL _DISPLAY_NAME _CHANGE_ID <<< "${USERS[0]}"
+runuser -u jenkins -- rm -f "/var/lib/jenkins/.ssh/${KEY_NAME}"
+
 if [[ ! -s "${STATE_FILE}" ]]; then
   echo "No central key state file — nothing to deregister."
   exit 0
@@ -50,7 +57,6 @@ fi
 # shellcheck source=/opt/ci/secrets/gerrit_tokens.env
 source "${SECRETS_FILE}"
 
-IFS='|' read -r GERRIT_USER _KEY_NAME _EMAIL _DISPLAY_NAME _CHANGE_ID <<< "${USERS[0]}"
 TOKEN_VAR="$(token_var_for "${GERRIT_USER}")"
 TOKEN="${!TOKEN_VAR:-}"
 if [[ -z "${TOKEN}" ]]; then

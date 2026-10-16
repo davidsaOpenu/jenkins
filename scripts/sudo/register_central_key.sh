@@ -104,7 +104,8 @@ chmod 600 "${STATE_FILE}"
 
 # Confirm the key is actually live before handing it to Jenkins —
 # GerritHub can take a moment to propagate a newly added key.
-SSH_OPTS=(-i "${KEY_PATH}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${TMP_DIR}/known_hosts")
+write_known_hosts "${TMP_DIR}/known_hosts"
+SSH_OPTS=(-i "${KEY_PATH}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="${TMP_DIR}/known_hosts")
 ok=0
 for _ in 1 2 3 4 5; do
   if ssh "${SSH_OPTS[@]}" -p "${GERRIT_PORT}" "${GERRIT_USER}@${GERRIT_HOST}" gerrit version >/dev/null 2>&1; then
@@ -120,9 +121,13 @@ if [[ "${ok}" -ne 1 ]]; then
   exit 1
 fi
 
-mkdir -p "${KEY_DEST_DIR}"
-chown jenkins:jenkins "${KEY_DEST_DIR}"
-chmod 700 "${KEY_DEST_DIR}"
-install -o jenkins -g jenkins -m 600 "${KEY_PATH}" "${KEY_DEST}"
+# Every write under /var/lib/jenkins happens AS jenkins, never as root:
+# jenkins owns that tree, so it could swap .ssh (or the key path) for a
+# symlink to /etc, and a root chown/chmod/install would follow it and hand
+# jenkins ownership of the target. Done as jenkins, a symlink only reaches
+# what jenkins could already write. Root opens KEY_PATH for the redirect,
+# so jenkins never needs read access to STATE_DIR.
+runuser -u jenkins -- mkdir -p -m 700 "${KEY_DEST_DIR}"
+runuser -u jenkins -- install -m 600 /dev/stdin "${KEY_DEST}" < "${KEY_PATH}"
 
 echo "Central key installed at ${KEY_DEST}, seq=${SEQ} recorded in ${STATE_FILE}."

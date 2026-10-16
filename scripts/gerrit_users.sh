@@ -13,8 +13,12 @@ USERS=(
 # so this is a no-op there). Never sourced/eval'd: each line is validated
 # against the exact USERS shape before being accepted, so the file can only
 # ever supply data, never executable code.
+# Ignored entirely when running as root: the /opt/ci copy runs under sudo,
+# and depending on sudo version/Defaults (env_keep += HOME) HOME may still
+# be the caller's, letting jenkins pick which account, token, and key name
+# the root scripts use.
 LOCAL_USERS_FILE="${HOME}/.gerrit_test_users"
-if [[ -f "$LOCAL_USERS_FILE" ]]; then
+if [[ $EUID -ne 0 && -f "$LOCAL_USERS_FILE" ]]; then
   USERS=()
   while IFS= read -r line; do
     [[ -z "$line" || "$line" == \#* ]] && continue

@@ -16,7 +16,12 @@
 #
 # WHAT IT DOES (idempotent — safe to re-run):
 #   1. Verifies it's run as root and that all source files exist
-#      (4 in this directory, gerrit_users.sh one directory up).
+#      (4 in this directory, gerrit_users.sh one directory up), and that
+#      `jenkins` can't write any of them or any directory above them —
+#      otherwise jenkins could swap a script before it's installed as a
+#      root-run, sudo-allowed binary. Run this from a fresh clone owned by
+#      you or root, never from a Jenkins workspace, and diff the printed
+#      checksums against the reviewed commit before continuing.
 #   2. Creates /opt/ci/secrets (root:root, 0700) and /opt/ci/state
 #      (root:root, 0700).
 #   3. Installs all 5 scripts to /opt/ci/ (root:root, 0700).
@@ -78,7 +83,32 @@ if [[ ! -f "${USERS_SOURCE}" ]]; then
   exit 1
 fi
 
+# Refuse any source jenkins could tamper with: the file itself, or any
+# directory on its path (write access to a directory = can rename/replace
+# the entry). Resolved with realpath so a symlink can't hide the real
+# location.
+if id jenkins &>/dev/null; then
+  for src in "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}"; do
+    path="$(realpath -e "${src}")"
+    while :; do
+      if runuser -u jenkins -- test -w "${path}"; then
+        echo "ERROR: ${path} is writable by jenkins — refusing to install" >&2
+        echo "       ${src} as a root-run script. Deploy from a clone jenkins" >&2
+        echo "       can't modify (owned by you or root, not a workspace)." >&2
+        exit 1
+      fi
+      [[ "${path}" == "/" ]] && break
+      path="$(dirname "${path}")"
+    done
+  done
+fi
+
 echo "==> Deploying from: ${SCRIPT_DIR}"
+# Deliberately no git calls here: git run as root in a non-root-owned
+# checkout can execute repo-configured commands (e.g. core.fsmonitor).
+# Compare as yourself instead: git show <reviewed-commit>:<path> | sha256sum
+echo "==> SHA-256 of files to install (compare against the reviewed commit):"
+sha256sum "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}" | sed 's/^/       /'
 
 # ---------------------------------------------------------------------------
 # 2 & 3. Create dirs + install all scripts
@@ -106,12 +136,16 @@ echo "==> Installed: ${INSTALL_DIR}/${SHARED_USERS_SCRIPT} (root:root, 700)"
 if [[ -f "${SECRETS_FILE}" ]]; then
   echo "==> Secrets file already exists, leaving it untouched: ${SECRETS_FILE}"
 else
-  cat > "${SECRETS_FILE}" <<'EOF'
+  # umask 077: the file is never readable by anyone but root, even
+  # between creation and the explicit chmod below.
+  (umask 077 && cat > "${SECRETS_FILE}") <<'EOF'
 # gerrit_tokens.env
 # HTTP tokens for each GerritHub service account used by
-# gerrit_multi_user_push.sh / register_central_key.sh. Each token only
-# needs to manage that same account's own SSH keys (self-service REST
-# scope) — never a shared admin credential.
+# gerrit_multi_user_push.sh / register_central_key.sh. These are FULL
+# account credentials: a GerritHub HTTP password grants complete REST
+# access as that account (voting, abandoning, account settings), not just
+# SSH-key management. Use dedicated service accounts with minimal project
+# permissions — never a personal or admin account.
 JENKINS_OSW_TOKEN="REPLACE_ME"
 JENKINS_USERA_TOKEN="REPLACE_ME"
 JENKINS_USERB_TOKEN="REPLACE_ME"

@@ -140,6 +140,7 @@ TARGET_BRANCH="master"
 # unreadable by jenkins or anything else, no extra chmod needed.
 WORK_ROOT="$(mktemp -d /tmp/gerrit-multi-push.XXXXXX)"
 KNOWN_HOSTS_FILE="${WORK_ROOT}/known_hosts"
+write_known_hosts "${KNOWN_HOSTS_FILE}"
 OVERALL_STATUS=0
 
 # ---------------------------------------------------------------------------
@@ -176,7 +177,7 @@ process_user() {
   fi
   echo "Registered SSH key seq=${SEQ} for ${GERRIT_USER}."
 
-  local SSH_OPTS=(-i "${KEY_PATH}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${KNOWN_HOSTS_FILE}")
+  local SSH_OPTS=(-i "${KEY_PATH}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="${KNOWN_HOSTS_FILE}")
 
   local i ok=0
   for i in 1 2 3 4 5; do

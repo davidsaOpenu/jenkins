@@ -13,6 +13,19 @@ GERRIT_HOST="review.gerrithub.io"
 GERRIT_PORT="29418"
 GERRIT_API_BASE="https://${GERRIT_HOST}/a"
 
+# Pinned GerritHub SSH host key — used with StrictHostKeyChecking=yes
+# instead of trust-on-first-use against a fresh known_hosts every run.
+# Cross-checked against an independently accumulated known_hosts entry.
+# If GerritHub rotates it, re-verify (ssh-keyscan -p 29418 review.gerrithub.io
+# from two networks) before updating this line.
+GERRIT_HOST_KEY="[${GERRIT_HOST}]:${GERRIT_PORT} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC1wudLWtuNHlf5/nz2eewG8B+iVWfuuQcu9eXj3aC8B"
+
+# Writes the pinned host key to $1 (a root-only temp path) for use as
+# UserKnownHostsFile.
+write_known_hosts() {
+  printf '%s\n' "${GERRIT_HOST_KEY}" > "$1"
+}
+
 # BYPASS PROXIES — production exports a broken proxy that curl silently
 # honors even for plain HTTPS to GerritHub, causing TLS handshake
 # failures ("SSL routines::wrong version number"). Every curl call in
