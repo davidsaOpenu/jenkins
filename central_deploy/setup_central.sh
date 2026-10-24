@@ -7,9 +7,8 @@
 # Prepares the machine, then hands over to deploy_central_jenkins.sh:
 #   1. prerequisites (Ansible, Python YAML, curl, git, openssl);
 #   2. the GerritHub SSH key: created in /root/.ssh/<ssh_key_name> if
-#      missing; if GerritHub doesn't accept it yet, shows the public key and
-#      (in a terminal) registers it with the account's HTTP password — typed
-#      hidden, used once, never stored — or waits while you add it by hand;
+#      missing; if GerritHub doesn't accept it yet, registered via REST with
+#      the config's gerrit_http_password. Never prompts — runs unattended;
 #   3. with --replace-old-jenkins only (it stops processes and moves data):
 #      retires an earlier hand-made Jenkins — whatever else holds
 #      jenkins_internal_port, a distro `jenkins` service that isn't ours,
@@ -87,42 +86,41 @@ PYEOF
     fi
 }
 
-# Step 2b. Makes sure GerritHub accepts the key as GERRIT_USERNAME. If not:
-# in a terminal, offers to register it via REST with the account's HTTP
-# password, or waits while it's added in the web UI; without a terminal
-# (CI), fails with what to do.
+# Step 2b. Makes sure GerritHub accepts the key as GERRIT_USERNAME. If it
+# doesn't yet, registers it via REST with gerrit_http_password from the
+# config — never prompts. Already accepted (CI: register_central_key.sh
+# registered it on the host before this runs), the password isn't needed.
 ensure_gerrit_key_registered() {
     if _gerrit_ssh_identity_ok "$KEY_FILE" "$GERRIT_USERNAME"; then
         echo "  ✓ GerritHub accepts ${KEY_FILE} as ${GERRIT_USERNAME}"
         return 0
     fi
 
-    echo "→ GerritHub doesn't accept this key as ${GERRIT_USERNAME} yet. Its public key:"
-    echo ""
-    sed 's/^/    /' "${KEY_FILE}.pub"
-    echo ""
-    if [[ ! -t 0 ]]; then
-        echo "✗ Add it at https://review.gerrithub.io/settings/#SSHKeys (logged in as ${GERRIT_USERNAME}), then re-run." >&2
+    local http_password
+    http_password=$(python3 - "$ACCOUNTS_FILE" <<'PYEOF'
+import sys, yaml
+print((yaml.safe_load(open(sys.argv[1])) or {}).get('gerrit_http_password') or '')
+PYEOF
+    )
+    if [[ -z "$http_password" ]]; then
+        echo "✗ GerritHub doesn't accept ${KEY_FILE} as ${GERRIT_USERNAME}, and gerrit_http_password" >&2
+        echo "  is blank in ${ACCOUNTS_FILE}. Set it to ${GERRIT_USERNAME}'s GerritHub HTTP password" >&2
+        echo "  (Settings > HTTP Credentials) and re-run — or add this public key by hand at" >&2
+        echo "  https://review.gerrithub.io/settings/#SSHKeys and re-run:" >&2
+        sed 's/^/    /' "${KEY_FILE}.pub" >&2
         exit 1
     fi
 
-    echo "  Either paste ${GERRIT_USERNAME}'s GerritHub HTTP password (Settings > HTTP Credentials)"
-    echo "  to register it automatically — hidden, used once, not stored — or add the key"
-    echo "  yourself at https://review.gerrithub.io/settings/#SSHKeys and just press Enter."
-    local http_password=""
-    read -rsp "  HTTP password (or Enter): " http_password || true
-    echo ""
-    if [[ -n "$http_password" ]]; then
-        # shellcheck source=../scripts/sudo/gerrit_key_lib.sh
-        source "${REPO_ROOT}/scripts/sudo/gerrit_key_lib.sh"
-        local seq resp
-        resp=$(mktemp)
-        seq=$(register_ssh_key "$GERRIT_USERNAME" "$http_password" "${KEY_FILE}.pub" "$resp") \
-            || { rm -f "$resp"; echo "✗ Registration failed — wrong HTTP password?" >&2; exit 1; }
-        rm -f "$resp"
-        echo "→ Registered on GerritHub (seq ${seq})"
-    fi
+    echo "→ Registering ${KEY_FILE}.pub on GerritHub as ${GERRIT_USERNAME}..."
+    # shellcheck source=../scripts/sudo/gerrit_key_lib.sh
+    source "${REPO_ROOT}/scripts/sudo/gerrit_key_lib.sh"
+    local key_seq resp
+    resp=$(mktemp)
+    key_seq=$(register_ssh_key "$GERRIT_USERNAME" "$http_password" "${KEY_FILE}.pub" "$resp") \
+        || { rm -f "$resp"; echo "✗ Registration failed — is gerrit_http_password ${GERRIT_USERNAME}'s HTTP password (not the login password)?" >&2; exit 1; }
+    rm -f "$resp"
     http_password=""
+    echo "→ Registered (seq ${key_seq})"
 
     local i
     for i in $(seq 1 10); do
@@ -132,7 +130,7 @@ ensure_gerrit_key_registered() {
         fi
         sleep 3
     done
-    echo "✗ GerritHub still doesn't accept the key as ${GERRIT_USERNAME} — check the account, then re-run." >&2
+    echo "✗ Registered, but GerritHub still doesn't accept the key as ${GERRIT_USERNAME} — check the account, then re-run." >&2
     exit 1
 }
 

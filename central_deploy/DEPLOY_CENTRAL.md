@@ -46,6 +46,7 @@ Gitignored — never commit it. Fields:
 |---|---|---|
 | `gerrit_username` | **yes** | The GerritHub service account (also the Jenkins admin login). |
 | `ssh_key_name` | **yes** | File name of its private key in `/root/.ssh/`. Created if missing. |
+| `gerrit_http_password` | **yes** | `gerrit_username`'s GerritHub **HTTP password** (Settings → HTTP Credentials — not the login password). Used only to register the key on the account when GerritHub doesn't accept it yet; never reaches Jenkins. A full account credential — keep the file `chmod 600`. Not needed only if the key is already registered (CI's case). |
 | `jenkins_url` | no | The address users and agents open, e.g. `https://192.114.0.189/jenkins`. nginx listens on its port (443 for `https`, 80 for `http`, unless the URL names one); a path becomes Jenkins' URL prefix. Blank = `https://<auto-detected IP>`. `http` sends passwords and agent secrets unencrypted. |
 | `jenkins_internal_port` | no | Jenkins' own port on 127.0.0.1 behind nginx, never reachable from outside. Default 8080 — change it only if 8080 is taken on this machine. |
 | `jenkins_admin_password` | no | Blank: generated once into `/etc/jenkins-dr/admin_password` (root-only) and reused on re-runs. |
@@ -58,6 +59,7 @@ Example — HTTPS under `/jenkins`, on a machine where nginx already holds
 ```yaml
 gerrit_username: "jenkins-osw"
 ssh_key_name: "id_jenkins_osw_central"
+gerrit_http_password: "<from GerritHub Settings → HTTP Credentials>"
 jenkins_url: "https://192.114.0.189/jenkins"
 jenkins_internal_port: 9090
 ```
@@ -73,20 +75,15 @@ On a machine that already runs (or ran) a hand-made Jenkins, add
 
     sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml --replace-old-jenkins
 
-Run it in a terminal the first time: if GerritHub doesn't know the SSH key
-yet, it shows the public key and asks for the account's GerritHub **HTTP
-password** (Settings → HTTP Credentials) to register it for you — typed
-hidden, used once, never stored. Or add the key yourself at
-https://review.gerrithub.io/settings/#SSHKeys and just press Enter.
-
-Takes several minutes on a fresh machine. Safe to re-run any time — to
+It never prompts, so it can run unattended. Takes several minutes on a fresh machine. Safe to re-run any time — to
 reapply config, after fixing a problem, or to recover.
 
 ### What it does
 
 1. Installs prerequisites (Ansible, Python YAML, curl, git, openssl).
 2. Creates `/root/.ssh/<ssh_key_name>` if missing, and makes sure GerritHub
-   accepts it as `gerrit_username` (registering it as above if not).
+   accepts it as `gerrit_username` — registering it with
+   `gerrit_http_password` if not.
 3. With `--replace-old-jenkins` only — it stops processes and moves data,
    so it never happens implicitly. Retires an earlier hand-made Jenkins:
    - stops whatever else listens on `jenkins_internal_port` (and a
@@ -129,8 +126,8 @@ The scripts stop at the first problem with a `✗` line saying what's wrong:
 | Message | Fix |
 |---|---|
 | `missing/blank required field(s)` / `must look like` / `was renamed to` | Fix `gerrit_central.yml` as the message says. |
-| `GerritHub doesn't accept this key … then re-run` | Not run in a terminal and the key isn't registered: add the printed public key to the account, re-run. |
-| `Registration failed — wrong HTTP password?` | Use the HTTP password from GerritHub Settings → HTTP Credentials (not the login password). |
+| `GerritHub doesn't accept … gerrit_http_password is blank` | Fill in `gerrit_http_password` (or add the printed public key to the account by hand), re-run. |
+| `Registration failed — is gerrit_http_password …` | Use the HTTP password from GerritHub Settings → HTTP Credentials, not the login password. |
 | `Port <n> (jenkins_internal_port) is already taken` | An old Jenkins (or nginx) holds it: re-run with `--replace-old-jenkins`, or pick another `jenkins_internal_port`. |
 | `nginx still proxies to Jenkins' port` | Re-run with `--replace-old-jenkins` (or run the printed `nginx_jenkins_proxies.py … --apply`). |
 | `Jenkins never came up` | Jenkins' own log is printed above it; also `sudo journalctl -u jenkins`. |

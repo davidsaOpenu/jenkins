@@ -15,10 +15,17 @@ gerrit_username: ""
 
 # File name, under /root/.ssh on this machine, of the private key for that
 # GerritHub account. It is copied into Jenkins for the Gerrit Trigger
-# plugin. setup_central.sh creates it if missing and, when GerritHub
-# doesn't accept it yet, offers to register it (or shows the public key
-# to add at https://review.gerrithub.io/settings/#SSHKeys).
+# plugin. setup_central.sh creates it if missing and registers it on the
+# account with gerrit_http_password below.
 ssh_key_name: ""
+
+# gerrit_username's GerritHub HTTP password (GerritHub > Settings > HTTP
+# Credentials — not the login password). setup_central.sh uses it only to
+# register ssh_key_name's public key on the account when GerritHub doesn't
+# accept it yet; it never reaches Jenkins. A full account credential: keep
+# this file chmod 600. (Unneeded only when the key is already registered —
+# CI's case.)
+gerrit_http_password: ""
 
 # ---------------------------------------------------------------------------
 # OPTIONAL
