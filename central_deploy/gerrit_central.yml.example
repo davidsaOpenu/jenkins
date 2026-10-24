@@ -1,50 +1,63 @@
-# Central Jenkins install + Gerrit-verification credentials — used only by
-# deploy_central_jenkins.sh. Every field is MANDATORY unless marked
-# Optional: central always uses a real GerritHub account, no mock mode.
+# Central Jenkins config — used only by deploy_central_jenkins.sh.
 #
 # Fill this in and run: sudo ./central_deploy/deploy_central_jenkins.sh central_deploy/gerrit_central.yml
 # NEVER commit this file once real values are filled in.
 
-# Your GerritHub username — used as the Jenkins-Gerrit SSH identity, the
-# identity pushing the verification patchset, AND the Jenkins admin login
-# (no separate admin account — this identity IS the admin).
-gerrit_username: ""
+# ---------------------------------------------------------------------------
+# REQUIRED — the only things the Gerrit Trigger plugin needs to listen to
+# GerritHub events and trigger jobs.
+# ---------------------------------------------------------------------------
 
-# This identity's Jenkins login password.
-jenkins_admin_password: ""
+# GerritHub username Jenkins connects as (use a dedicated service account,
+# not a personal one). Also the Jenkins admin login.
+gerrit_username: ""
 
 # Filename under /root/.ssh, on the machine that runs
 # deploy_central_jenkins.sh, of the private key registered to that
-# GerritHub account. The key itself
-# must already be there — this only names it.
+# GerritHub account. The key itself must already be there — this only
+# names it. It is copied into Jenkins for the Gerrit Trigger plugin.
 # Generate with: sudo ssh-keygen -t ed25519 -f /root/.ssh/gerrit_jenkins_key -C "jenkins@swiftacular"
 # Register /root/.ssh/gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
 ssh_key_name: ""
 
-# Email registered to that GerritHub account (Settings > Email Addresses).
-# Used as the commit identity when pushing the verification patchset —
-# Gerrit rejects commits whose committer email isn't registered.
-email: ""
+# ---------------------------------------------------------------------------
+# OPTIONAL
+# ---------------------------------------------------------------------------
 
-# Git commit author name for the verification patchset.
-display_name: ""
+# Jenkins login password for gerrit_username. Leave blank to have one
+# generated (once — re-runs reuse it) into /etc/jenkins-dr/admin_password.
+jenkins_admin_password: ""
 
-# A fixed Change-Id (Ixxxx...) on a permanent Gerrit change on
-# davidsaOpenu/swiftacular, reserved for pushing verification patchsets
-# onto. Embedded directly in every verification commit, so each push lands
-# as a new patchset on that same change instead of opening a new one.
-change_id: ""
-
-# Optional. The HTTPS certificate and its private key, as files already on
-# this machine — nginx serves Jenkins with them on port 443. Set both, or
-# leave both blank: deploy_central_jenkins.sh then creates a self-signed
-# pair for jenkins_public_ip at /etc/jenkins-dr/tls/ (browsers warn; give
-# students jenkins-dr.crt as their central_ca_cert).
+# The HTTPS certificate and its private key, as files already on this
+# machine — nginx serves Jenkins with them on port 443. Set both, or leave
+# both blank: a self-signed pair is then created for jenkins_public_ip at
+# /etc/jenkins-dr/tls/ (browsers warn; give students jenkins-dr.crt as
+# their central_ca_cert).
 tls_cert_file: ""
 tls_key_file: ""
 
-# Optional. The IP/hostname students should use to reach this Jenkins.
+# The IP/hostname students should use to reach this Jenkins.
 # Leave blank to auto-detect from the default route — only safe if this
 # machine has a single network interface. On a multi-homed server, set
 # this explicitly or students may get handed an unreachable address.
 jenkins_public_ip: ""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — end-to-end push test. Set all three, or none.
+# Without them the deploy checks that the Gerrit Trigger plugin is
+# connected to GerritHub. With them it also pushes a real patchset onto
+# change_id and waits for the jenkins-dr-test job to build it (CI's
+# run.sh always sets them).
+# ---------------------------------------------------------------------------
+
+# Email registered to gerrit_username's GerritHub account — Gerrit rejects
+# commits whose committer email isn't registered.
+email: ""
+
+# Git commit author name for the test patchset.
+display_name: ""
+
+# A fixed Change-Id (Ixxxx...) on a permanent Gerrit change on
+# davidsaOpenu/swiftacular, reserved for test pushes — each push lands as a
+# new patchset on that same change instead of opening a new one.
+change_id: ""

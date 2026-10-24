@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Installs central Jenkins + the dummy job + Gerrit wiring — the actual
 # disaster-recovery tool. Usage: sudo ./deploy_central_jenkins.sh
-# <path-to-gerrit_central.yml>. Always verifies via a real Gerrit push.
+# <path-to-gerrit_central.yml>. Always verifies the Gerrit Trigger plugin
+# is connected to GerritHub; with email/display_name/change_id set (as CI
+# sets them) also verifies end-to-end via a real Gerrit push.
 #
 # The ONE install path: run as-is on a real machine for disaster recovery,
 # and run.sh runs this same script, same command, same config shape inside
@@ -91,6 +93,11 @@ install_prereqs() {
 # Distro-neutral on purpose (not /etc/pki or /etc/ssl) — same path on every
 # supported OS. run_common.sh fetches the .crt from here for the agent VMs.
 GENERATED_TLS_DIR="/etc/jenkins-dr/tls"
+# Where a generated admin password is kept when the config sets none —
+# root-only, and reused on re-runs so the login never silently changes.
+GENERATED_ADMIN_PASSWORD_FILE="/etc/jenkins-dr/admin_password"
+# Must match the gerrit-trigger server name in jenkins.yaml.j2.
+GERRIT_SERVER_NAME="review.gerrithub.io"
 
 detect_public_ip() {
     local ip
@@ -141,6 +148,24 @@ ensure_tls_cert() {
     chmod 644 "$TLS_CERT_FILE"
 }
 
+# Uses the config's jenkins_admin_password, or — when blank — one generated
+# once into GENERATED_ADMIN_PASSWORD_FILE. Sets CENTRAL_JENKINS_ADMIN_PASSWORD
+# and ADMIN_PASSWORD_GENERATED.
+ensure_admin_password() {
+    if [[ -n "$CENTRAL_JENKINS_ADMIN_PASSWORD" ]]; then
+        ADMIN_PASSWORD_GENERATED=false
+        return 0
+    fi
+    ADMIN_PASSWORD_GENERATED=true
+    if [[ ! -s "$GENERATED_ADMIN_PASSWORD_FILE" ]]; then
+        echo "→ No jenkins_admin_password configured — generating one into ${GENERATED_ADMIN_PASSWORD_FILE}"
+        mkdir -p "$(dirname "$GENERATED_ADMIN_PASSWORD_FILE")"
+        (umask 077 && openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 24 > "$GENERATED_ADMIN_PASSWORD_FILE")
+    fi
+    chmod 600 "$GENERATED_ADMIN_PASSWORD_FILE"
+    CENTRAL_JENKINS_ADMIN_PASSWORD="$(cat "$GENERATED_ADMIN_PASSWORD_FILE")"
+}
+
 run_deploy() {
     echo "→ Loading ${ACCOUNTS_FILE}..."
     load_central_account "$ACCOUNTS_FILE"
@@ -154,13 +179,15 @@ run_deploy() {
         echo "→ Auto-detected IP: ${PUBLIC_IP} (set jenkins_public_ip in gerrit_central.yml to override)"
     fi
     ensure_tls_cert
+    ensure_admin_password
 
     # JCasC still needs the raw PEM — hand it over as a real YAML file, not
     # inline -e key=value (the key's newlines would collide with Ansible's
     # whitespace-split parsing of multiple pairs in one -e). The resolved
-    # TLS paths ride along, overriding the config's (possibly blank) ones.
+    # TLS paths and admin password ride along, overriding the config's
+    # (possibly blank) ones — and keep the password off any command line.
     local key_vars_file="${WORKDIR}/gerrit_ssh_private_key.yml"
-    python3 -c "import yaml,sys; yaml.safe_dump({'gerrit_ssh_private_key': open(sys.argv[1]).read(), 'tls_cert_file': sys.argv[3], 'tls_key_file': sys.argv[4]}, open(sys.argv[2], 'w'))" \
+    CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 -c "import os,yaml,sys; yaml.safe_dump({'gerrit_ssh_private_key': open(sys.argv[1]).read(), 'tls_cert_file': sys.argv[3], 'tls_key_file': sys.argv[4], 'jenkins_admin_password': os.environ['CENTRAL_JENKINS_ADMIN_PASSWORD']}, open(sys.argv[2], 'w'))" \
         "$CENTRAL_GERRIT_KEY_FILE" "$key_vars_file" "$TLS_CERT_FILE" "$TLS_KEY_FILE"
 
     local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "jenkins_public_ip=${PUBLIC_IP}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile")
@@ -169,8 +196,31 @@ run_deploy() {
         "${REPO_ROOT}/central_deploy/deploy_jenkins.yml"
 }
 
+# The one thing a DR Jenkins needs from Gerrit: the Gerrit Trigger plugin
+# holding its stream-events connection, so pushes trigger jobs. Asks the
+# plugin itself (script console, as admin) rather than inferring it.
+wait_for_gerrit_connected() {
+    echo "→ Waiting for the Gerrit Trigger plugin to connect to ${GERRIT_SERVER_NAME} as ${CENTRAL_GERRIT_USERNAME}..."
+    local script="println(com.sonyericsson.hudson.plugins.gerrit.trigger.PluginImpl.getInstance().getServer('${GERRIT_SERVER_NAME}').isConnected())"
+    local i crumb out=""
+    for i in $(seq 1 30); do
+        if crumb=$(get_crumb 2>/dev/null); then
+            out=$(curl -sf -u "${ADMIN_USER}:${ADMIN_PASS}" -c "${WORKDIR}/cookies" -b "${WORKDIR}/cookies" \
+                -H "$crumb" --data-urlencode "script=${script}" "${JENKINS_URL}/scriptText" 2>/dev/null || true)
+            if [[ "$(echo "$out" | tr -d '[:space:]')" == "true" ]]; then
+                echo "  ✓ Gerrit Trigger connected — Gerrit events will trigger jobs"
+                return 0
+            fi
+        fi
+        sleep 2
+    done
+    echo "✗ Gerrit Trigger never connected to ${GERRIT_SERVER_NAME} (last answer: '${out}')." >&2
+    echo "  SSH auth as ${CENTRAL_GERRIT_USERNAME} passed the preflight, so check the plugin's" >&2
+    echo "  status in Manage Jenkins > Gerrit Trigger, and: journalctl -u jenkins" >&2
+    exit 1
+}
+
 verify_deploy() {
-    echo "→ Verifying: pushing a real Gerrit patchset and waiting for the dummy job to build..."
     ADMIN_USER="$CENTRAL_JENKINS_ADMIN_USER"
     ADMIN_PASS="$CENTRAL_JENKINS_ADMIN_PASSWORD"
     JENKINS_PORT=$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_http_port'])")
@@ -179,6 +229,14 @@ verify_deploy() {
     JENKINS_URL="http://127.0.0.1:${JENKINS_PORT}"
     DUMMY_JOB="jenkins-dr-test"
 
+    wait_for_gerrit_connected
+
+    if [[ "$CENTRAL_VERIFY_PUSH" != true ]]; then
+        echo "→ email/display_name/change_id not set — skipping the end-to-end Gerrit push test."
+        return 0
+    fi
+
+    echo "→ Verifying: pushing a real Gerrit patchset and waiting for the dummy job to build..."
     register_gerrit_trigger "$DUMMY_JOB"
     push_real_gerrit_patchset "$DUMMY_JOB" "$CENTRAL_GERRIT_USERNAME" "$CENTRAL_GERRIT_KEY_FILE" \
         "$CENTRAL_GERRIT_EMAIL" "$CENTRAL_GERRIT_DISPLAY_NAME" "$CENTRAL_CHANGE_ID" "$REGISTER_BUILD"
@@ -218,7 +276,14 @@ main() {
     run_deploy
     verify_deploy
     JENKINS_URL="https://${PUBLIC_IP}"
-    print_final_status "✓ Central Jenkins installed and Gerrit trigger verified end-to-end."
+    if [[ "$CENTRAL_VERIFY_PUSH" == true ]]; then
+        print_final_status "✓ Central Jenkins installed and Gerrit trigger verified end-to-end."
+    else
+        print_final_status "✓ Central Jenkins installed and connected to GerritHub."
+    fi
+    if [[ "$ADMIN_PASSWORD_GENERATED" == true ]]; then
+        echo "  Admin password: sudo cat ${GENERATED_ADMIN_PASSWORD_FILE}"
+    fi
     if [[ "$TLS_SELF_SIGNED" == true ]]; then
         echo "  Self-signed certificate: ${TLS_CERT_FILE}"
         echo "  Give students a copy — it's their central_ca_cert (see student_deploy/CONNECT_AGENT.md)."

@@ -351,11 +351,17 @@ load_central_account() {
 import os, sys, yaml
 path = sys.argv[1]
 d = yaml.safe_load(open(path)) or {}
-required = ['jenkins_admin_password', 'gerrit_username',
-            'ssh_key_name', 'email', 'display_name', 'change_id']
+# Only what the Gerrit Trigger plugin needs is mandatory: the account and
+# its SSH key. Everything else is optional.
+required = ['gerrit_username', 'ssh_key_name']
 missing = [f for f in required if not d.get(f)]
 if missing:
     print(f"✗ {path}: missing/blank required field(s): {', '.join(missing)}", file=sys.stderr)
+    sys.exit(1)
+# The end-to-end push test needs all three (CI sets them) — or none.
+push = ('email', 'display_name', 'change_id')
+if any(d.get(f) for f in push) and not all(d.get(f) for f in push):
+    print(f"✗ {path}: set all of {', '.join(push)} (for the end-to-end push test), or leave all blank", file=sys.stderr)
     sys.exit(1)
 # TLS: both set (a real certificate) or both blank (deploy_central_jenkins.sh
 # makes a self-signed one) — never just one.
@@ -367,12 +373,12 @@ for f in tls:
     if d.get(f) and not os.path.isfile(d[f]):
         print(f"✗ {path}: {f} names {d[f]}, which is not a file on this machine", file=sys.stderr)
         sys.exit(1)
-print(f'CENTRAL_JENKINS_ADMIN_PASSWORD\t{d["jenkins_admin_password"]}')
+print(f'CENTRAL_JENKINS_ADMIN_PASSWORD\t{d.get("jenkins_admin_password") or ""}')
 print(f'CENTRAL_GERRIT_USERNAME\t{d["gerrit_username"]}')
 print(f'CENTRAL_SSH_KEY_NAME\t{d["ssh_key_name"]}')
-print(f'CENTRAL_GERRIT_EMAIL\t{d["email"]}')
-print(f'CENTRAL_GERRIT_DISPLAY_NAME\t{d["display_name"]}')
-print(f'CENTRAL_CHANGE_ID\t{d["change_id"]}')
+print(f'CENTRAL_GERRIT_EMAIL\t{d.get("email") or ""}')
+print(f'CENTRAL_GERRIT_DISPLAY_NAME\t{d.get("display_name") or ""}')
+print(f'CENTRAL_CHANGE_ID\t{d.get("change_id") or ""}')
 print(f'CENTRAL_JENKINS_PUBLIC_IP\t{d.get("jenkins_public_ip") or ""}')
 print(f'CENTRAL_TLS_CERT_FILE\t{d.get("tls_cert_file") or ""}')
 print(f'CENTRAL_TLS_KEY_FILE\t{d.get("tls_key_file") or ""}')
@@ -382,6 +388,8 @@ PYEOF
         printf -v "$key" '%s' "$value"
     done <<< "$output"
     CENTRAL_JENKINS_ADMIN_USER="$CENTRAL_GERRIT_USERNAME"
+    CENTRAL_VERIFY_PUSH=false
+    [[ -n "$CENTRAL_CHANGE_ID" ]] && CENTRAL_VERIFY_PUSH=true
 
     CENTRAL_GERRIT_KEY_FILE="${HOME}/.ssh/${CENTRAL_SSH_KEY_NAME}"
     [[ -f "$CENTRAL_GERRIT_KEY_FILE" ]] \
