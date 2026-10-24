@@ -30,6 +30,8 @@ CI run means this exact install works.
      in clear text); a path becomes Jenkins' URL prefix.
      nginx in front is the only way in — Jenkins itself listens on
      localhost only. Blank means `https://<auto-detected IP>`.
+   - `jenkins_http_port` — the port Jenkins listens on behind nginx,
+     on 127.0.0.1 only (default 8080). Change it only if 8080 is taken.
    - `tls_cert_file`, `tls_key_file` — https only: a real certificate and
      key. Blank creates a self-signed one at
      `/etc/jenkins-dr/tls/jenkins-dr.crt`; students then need a copy.

@@ -47,6 +47,11 @@ jenkins_url: ""
 tls_cert_file: ""
 tls_key_file: ""
 
+# The port Jenkins itself listens on, on 127.0.0.1 only — nginx forwards
+# jenkins_url to it; it is never reachable from outside. Blank = 8080.
+# Set it only if something else on this machine already uses 8080.
+jenkins_http_port: ""
+
 # ---------------------------------------------------------------------------
 # OPTIONAL — end-to-end push test. Set all three, or none.
 # Without them the deploy checks that the Gerrit Trigger plugin is

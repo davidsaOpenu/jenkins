@@ -132,6 +132,14 @@ resolve_jenkins_url() {
     if [[ -z "$JENKINS_LISTEN_PORT" ]]; then
         if [[ "$JENKINS_SCHEME" == https ]]; then JENKINS_LISTEN_PORT=443; else JENKINS_LISTEN_PORT=80; fi
     fi
+
+    # Jenkins' own localhost port: the config's jenkins_http_port, else the
+    # role default. Can't be the port nginx listens on.
+    JENKINS_HTTP_PORT="${CENTRAL_JENKINS_HTTP_PORT:-$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_http_port'])")}"
+    if [[ "$JENKINS_HTTP_PORT" == "$JENKINS_LISTEN_PORT" ]]; then
+        echo "✗ jenkins_http_port ${JENKINS_HTTP_PORT} is also the port in jenkins_url — nginx and Jenkins can't share it" >&2
+        exit 1
+    fi
 }
 
 # For https only: uses the certificate the config names, or — when it
@@ -214,9 +222,10 @@ run_deploy() {
     local key_vars_file="${WORKDIR}/gerrit_ssh_private_key.yml"
     CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 - "$key_vars_file" \
         "$CENTRAL_GERRIT_KEY_FILE" "$TLS_CERT_FILE" "$TLS_KEY_FILE" \
-        "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" "$JENKINS_LISTEN_PORT" <<'PYEOF'
+        "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" "$JENKINS_LISTEN_PORT" \
+        "$JENKINS_HTTP_PORT" <<'PYEOF'
 import os, sys, yaml
-dst, key_file, cert, key, url, scheme, host, prefix, listen_port = sys.argv[1:10]
+dst, key_file, cert, key, url, scheme, host, prefix, listen_port, http_port = sys.argv[1:11]
 yaml.safe_dump({
     'gerrit_ssh_private_key': open(key_file).read(),
     'tls_cert_file': cert,
@@ -227,6 +236,7 @@ yaml.safe_dump({
     'jenkins_host': host,
     'jenkins_prefix': prefix,
     'jenkins_listen_port': int(listen_port),
+    'jenkins_http_port': int(http_port),
 }, open(dst, 'w'))
 PYEOF
 
@@ -263,10 +273,9 @@ wait_for_gerrit_connected() {
 verify_deploy() {
     ADMIN_USER="$CENTRAL_JENKINS_ADMIN_USER"
     ADMIN_PASS="$CENTRAL_JENKINS_ADMIN_PASSWORD"
-    JENKINS_PORT=$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_http_port'])")
     # Straight to Jenkins on localhost, not through nginx — this script
     # runs on the server itself, and the role already checked nginx.
-    JENKINS_URL="http://127.0.0.1:${JENKINS_PORT}${JENKINS_PREFIX}"
+    JENKINS_URL="http://127.0.0.1:${JENKINS_HTTP_PORT}${JENKINS_PREFIX}"
     DUMMY_JOB="jenkins-dr-test"
 
     wait_for_gerrit_connected
