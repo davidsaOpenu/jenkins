@@ -59,7 +59,7 @@ credentials:
 # both fall under Jenkins core's "Unclassified" category).
 unclassified:
   location:
-    url: "https://{{ jenkins_public_ip }}/"
+    url: "{{ jenkins_url }}/"
   gerrit-trigger:
     servers:
       - name: "review.gerrithub.io"

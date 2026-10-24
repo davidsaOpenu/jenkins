@@ -4,10 +4,16 @@ jenkins_http_port: 8080
 # Jenkins LTS version. Empty = auto-detect. Fetched via get.jenkins.io
 # (Azure), not pkg.jenkins.io — its Fastly CDN range is blackholed here.
 jenkins_version: ""
-# Jenkins' externally-reachable address (self-referential URL).
-# deploy_central_jenkins.sh auto-detects/overrides this; the default here
-# is only for a manual run against the test VM.
-jenkins_public_ip: 192.168.100.170
+# Jenkins' externally-reachable URL, and its parts: scheme picks nginx's
+# port (http 80 / https 443), host is nginx's server_name, prefix ("" or
+# e.g. "/jenkins") is Jenkins' --prefix and nginx's location.
+# deploy_central_jenkins.sh resolves all four from gerrit_central.yml's
+# jenkins_url; the defaults here are only for a manual run against the
+# CI test VM.
+jenkins_url: "https://192.168.100.170"
+jenkins_scheme: https
+jenkins_host: 192.168.100.170
+jenkins_prefix: ""
 # Pins jenkins-plugin-manager, used to pre-install plugins before Jenkins'
 # first boot (so JCasC's authorizationStrategy is active from boot one,
 # instead of leaving a window where Jenkins runs unsecured).

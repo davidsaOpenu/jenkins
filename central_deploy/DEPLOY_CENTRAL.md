@@ -23,11 +23,15 @@ CI run means this exact install works.
    Everything else is optional:
    - `jenkins_admin_password` — blank generates one, kept in
      `/etc/jenkins-dr/admin_password` (root-only, reused on re-runs).
-   - `tls_cert_file`, `tls_key_file` — a real HTTPS certificate and key.
-     Jenkins is served only over HTTPS (port 443, through nginx), so port
-     443 must be reachable by students. Blank creates a self-signed one at
+   - `jenkins_url` — the full address users and agents use, e.g.
+     `https://ci.example.org` or `http://192.114.0.189/jenkins`. `https`
+     serves on port 443, `http` on port 80 (unencrypted — logins and agent
+     secrets travel in clear text); a path becomes Jenkins' URL prefix.
+     nginx in front is the only way in — Jenkins itself listens on
+     localhost only. Blank means `https://<auto-detected IP>`.
+   - `tls_cert_file`, `tls_key_file` — https only: a real certificate and
+     key. Blank creates a self-signed one at
      `/etc/jenkins-dr/tls/jenkins-dr.crt`; students then need a copy.
-   - `jenkins_public_ip` — blank auto-detects it.
    - `email`, `display_name`, `change_id` — only for the end-to-end push
      test (see step 4). Set all three or none.
 

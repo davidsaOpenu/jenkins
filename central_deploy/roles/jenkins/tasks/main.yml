@@ -237,7 +237,7 @@
       # strings. preferIPv4Stack matters because this JVM (Gerrit SSH,
       # update checks) has its own IPv6 preference, past curl -4/dnf's
       # reach and past gai.conf, which Java doesn't consult.
-      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins.war --httpListenAddress=127.0.0.1 --httpPort={{ jenkins_http_port }}
+      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins.war --httpListenAddress=127.0.0.1 --httpPort={{ jenkins_http_port }}{{ (' --prefix=' ~ jenkins_prefix) if jenkins_prefix else '' }}
       Restart=on-failure
       TimeoutStartSec=300
 
@@ -265,7 +265,7 @@
       import jenkins.model.JenkinsLocationConfiguration
 
       def locationConfig = JenkinsLocationConfiguration.get()
-      locationConfig.setUrl('https://{{ jenkins_public_ip }}/')
+      locationConfig.setUrl('{{ jenkins_url }}/')
       locationConfig.save()
   tags: configure
 
@@ -360,7 +360,7 @@
 - name: Wait for Jenkins to be ready with new JCasC
   block:
     - ansible.builtin.uri:
-        url: "http://localhost:{{ jenkins_http_port }}/login"
+        url: "http://localhost:{{ jenkins_http_port }}{{ jenkins_prefix }}/login"
         status_code: 200
       register: jenkins_up
       retries: 60
@@ -386,8 +386,9 @@
         msg: "Jenkins never came up on :{{ jenkins_http_port }} — see service status/log dumped above."
   tags: configure
 
-# nginx is the only way in from outside: HTTPS on 443 in front of Jenkins,
-# which listens on localhost only. The certificate is whatever
+# nginx is the only way in from outside: HTTPS on 443 (or plain HTTP on 80
+# when jenkins_url is http://) in front of Jenkins, which listens on
+# localhost only. For https, the certificate is whatever
 # tls_cert_file / tls_key_file resolve to — the config's own, or the
 # self-signed pair deploy_central_jenkins.sh made. The role creates none.
 - name: Install nginx
@@ -405,6 +406,7 @@
     path: /etc/nginx/tls
     state: directory
     mode: "0700"
+  when: jenkins_scheme == "https"
   tags: configure
 
 - name: Install the TLS certificate and key named in the config
@@ -417,6 +419,7 @@
     - { src: "{{ tls_cert_file }}", dest: jenkins.crt, mode: "0644" }
     - { src: "{{ tls_key_file }}", dest: jenkins.key, mode: "0600" }
   no_log: true
+  when: jenkins_scheme == "https"
   tags: configure
 
 - name: Deploy nginx site for Jenkins
@@ -443,9 +446,13 @@
     state: restarted
   tags: configure
 
-- name: Check Jenkins answers over HTTPS through nginx
+# Host header set explicitly: nginx picks the server block by server_name
+# (jenkins_host), not by the address dialled.
+- name: Check Jenkins answers through nginx
   ansible.builtin.uri:
-    url: "https://127.0.0.1/login"
+    url: "{{ jenkins_scheme }}://127.0.0.1{{ jenkins_prefix }}/login"
+    headers:
+      Host: "{{ jenkins_host }}"
     validate_certs: false
     status_code: 200
   register: nginx_up

@@ -348,7 +348,7 @@ load_central_account() {
     local path="$1"
     local output
     output=$(python3 - "$path" <<'PYEOF'
-import os, sys, yaml
+import os, re, sys, yaml
 path = sys.argv[1]
 d = yaml.safe_load(open(path)) or {}
 # Only what the Gerrit Trigger plugin needs is mandatory: the account and
@@ -373,13 +373,30 @@ for f in tls:
     if d.get(f) and not os.path.isfile(d[f]):
         print(f"✗ {path}: {f} names {d[f]}, which is not a file on this machine", file=sys.stderr)
         sys.exit(1)
+if 'jenkins_public_ip' in d:
+    print(f"✗ {path}: jenkins_public_ip was replaced by jenkins_url (e.g. https://{d['jenkins_public_ip'] or '<ip>'}) — rename it", file=sys.stderr)
+    sys.exit(1)
+# jenkins_url: scheme://host[/path] — no port (nginx serves 80/443), no
+# query; the path becomes Jenkins' --prefix. Normalized without trailing /.
+url = (d.get('jenkins_url') or '').strip().rstrip('/')
+if url:
+    from urllib.parse import urlsplit
+    u = urlsplit(url)
+    if (u.scheme not in ('http', 'https') or not u.hostname or u.port
+            or u.query or u.fragment or u.username
+            or not re.fullmatch(r'(/[A-Za-z0-9._-]+)*', u.path)):
+        print(f"✗ {path}: jenkins_url must look like https://host or http://host/jenkins (no port), got {url}", file=sys.stderr)
+        sys.exit(1)
+    if u.scheme == 'http' and d.get('tls_cert_file'):
+        print(f"✗ {path}: tls_cert_file/tls_key_file are set but jenkins_url is http:// — use https:// or drop them", file=sys.stderr)
+        sys.exit(1)
 print(f'CENTRAL_JENKINS_ADMIN_PASSWORD\t{d.get("jenkins_admin_password") or ""}')
 print(f'CENTRAL_GERRIT_USERNAME\t{d["gerrit_username"]}')
 print(f'CENTRAL_SSH_KEY_NAME\t{d["ssh_key_name"]}')
 print(f'CENTRAL_GERRIT_EMAIL\t{d.get("email") or ""}')
 print(f'CENTRAL_GERRIT_DISPLAY_NAME\t{d.get("display_name") or ""}')
 print(f'CENTRAL_CHANGE_ID\t{d.get("change_id") or ""}')
-print(f'CENTRAL_JENKINS_PUBLIC_IP\t{d.get("jenkins_public_ip") or ""}')
+print(f'CENTRAL_JENKINS_URL\t{url}')
 print(f'CENTRAL_TLS_CERT_FILE\t{d.get("tls_cert_file") or ""}')
 print(f'CENTRAL_TLS_KEY_FILE\t{d.get("tls_key_file") or ""}')
 PYEOF

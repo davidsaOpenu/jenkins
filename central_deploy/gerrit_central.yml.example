@@ -28,19 +28,23 @@ ssh_key_name: ""
 # generated (once — re-runs reuse it) into /etc/jenkins-dr/admin_password.
 jenkins_admin_password: ""
 
-# The HTTPS certificate and its private key, as files already on this
-# machine — nginx serves Jenkins with them on port 443. Set both, or leave
-# both blank: a self-signed pair is then created for jenkins_public_ip at
+# The full address users and agents reach Jenkins at:
+#   https://<host>             HTTPS on 443 (default)
+#   http://<host>/jenkins      plain HTTP on 80, under a path
+# Scheme picks the port, the path (if any) becomes Jenkins' URL prefix.
+# No port number — nginx always serves 80 (http) or 443 (https).
+# Leave blank for https://<IP auto-detected from the default route> — only
+# safe on a machine with a single network interface. Plain http sends
+# logins and agent secrets unencrypted; prefer https.
+jenkins_url: ""
+
+# For https only. The certificate and its private key, as files already on
+# this machine — nginx serves Jenkins with them on 443. Set both, or leave
+# both blank: a self-signed pair is then created for jenkins_url's host at
 # /etc/jenkins-dr/tls/ (browsers warn; give students jenkins-dr.crt as
 # their central_ca_cert).
 tls_cert_file: ""
 tls_key_file: ""
-
-# The IP/hostname students should use to reach this Jenkins.
-# Leave blank to auto-detect from the default route — only safe if this
-# machine has a single network interface. On a multi-homed server, set
-# this explicitly or students may get handed an unreachable address.
-jenkins_public_ip: ""
 
 # ---------------------------------------------------------------------------
 # OPTIONAL — end-to-end push test. Set all three, or none.

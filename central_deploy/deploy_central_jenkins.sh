@@ -110,12 +110,37 @@ detect_public_ip() {
     echo "$ip"
 }
 
-# Uses the certificate the config names, or — when it names none — a
-# self-signed one for PUBLIC_IP under GENERATED_TLS_DIR. Made once and
-# reused across re-runs while it still matches PUBLIC_IP and isn't about to
-# expire, so agents that already trust it keep working. Sets
-# TLS_CERT_FILE / TLS_KEY_FILE / TLS_SELF_SIGNED.
+# Splits jenkins_url (already validated by load_central_account) — or, when
+# blank, https://<auto-detected IP> — into the parts nginx and Jenkins need.
+# Sets JENKINS_EXT_URL (no trailing /), JENKINS_SCHEME, JENKINS_HOST and
+# JENKINS_PREFIX ("" or e.g. "/jenkins").
+resolve_jenkins_url() {
+    if [[ -n "$CENTRAL_JENKINS_URL" ]]; then
+        JENKINS_EXT_URL="$CENTRAL_JENKINS_URL"
+        echo "→ Using configured jenkins_url: ${JENKINS_EXT_URL}"
+    else
+        JENKINS_EXT_URL="https://$(detect_public_ip)"
+        echo "→ Auto-detected URL: ${JENKINS_EXT_URL} (set jenkins_url in gerrit_central.yml to override)"
+    fi
+    [[ "$JENKINS_EXT_URL" =~ ^(https?)://([^/]+)(/.*)?$ ]] \
+        || { echo "✗ Can't parse jenkins_url ${JENKINS_EXT_URL}" >&2; exit 1; }
+    JENKINS_SCHEME="${BASH_REMATCH[1]}"
+    JENKINS_HOST="${BASH_REMATCH[2]}"
+    JENKINS_PREFIX="${BASH_REMATCH[3]}"
+}
+
+# For https only: uses the certificate the config names, or — when it
+# names none — a self-signed one for JENKINS_HOST under GENERATED_TLS_DIR.
+# Made once and reused across re-runs while it still matches JENKINS_HOST
+# and isn't about to expire, so agents that already trust it keep working.
+# Sets TLS_CERT_FILE / TLS_KEY_FILE / TLS_SELF_SIGNED.
 ensure_tls_cert() {
+    TLS_CERT_FILE=""
+    TLS_KEY_FILE=""
+    TLS_SELF_SIGNED=false
+    if [[ "$JENKINS_SCHEME" != https ]]; then
+        return 0
+    fi
     if [[ -n "$CENTRAL_TLS_CERT_FILE" ]]; then
         TLS_CERT_FILE="$CENTRAL_TLS_CERT_FILE"
         TLS_KEY_FILE="$CENTRAL_TLS_KEY_FILE"
@@ -127,10 +152,10 @@ ensure_tls_cert() {
     TLS_SELF_SIGNED=true
 
     local check san
-    if [[ "$PUBLIC_IP" =~ ^[0-9.]+$ ]]; then
-        check=(-checkip "$PUBLIC_IP"); san="IP:${PUBLIC_IP}"
+    if [[ "$JENKINS_HOST" =~ ^[0-9.]+$ ]]; then
+        check=(-checkip "$JENKINS_HOST"); san="IP:${JENKINS_HOST}"
     else
-        check=(-checkhost "$PUBLIC_IP"); san="DNS:${PUBLIC_IP}"
+        check=(-checkhost "$JENKINS_HOST"); san="DNS:${JENKINS_HOST}"
     fi
     if [[ -f "$TLS_CERT_FILE" && -f "$TLS_KEY_FILE" ]] \
         && openssl x509 -in "$TLS_CERT_FILE" -noout -checkend 86400 >/dev/null \
@@ -143,7 +168,7 @@ ensure_tls_cert() {
     mkdir -p "$GENERATED_TLS_DIR"
     chmod 755 "$GENERATED_TLS_DIR"
     (umask 077 && openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
-        -subj "/CN=${PUBLIC_IP}" -addext "subjectAltName=${san}" \
+        -subj "/CN=${JENKINS_HOST}" -addext "subjectAltName=${san}" \
         -keyout "$TLS_KEY_FILE" -out "$TLS_CERT_FILE" 2>/dev/null)
     chmod 644 "$TLS_CERT_FILE"
 }
@@ -171,26 +196,35 @@ run_deploy() {
     load_central_account "$ACCOUNTS_FILE"
     validate_gerrit_account "central" "$CENTRAL_GERRIT_KEY_FILE" "$CENTRAL_GERRIT_USERNAME" "$CENTRAL_CHANGE_ID"
 
-    if [[ -n "$CENTRAL_JENKINS_PUBLIC_IP" ]]; then
-        PUBLIC_IP="$CENTRAL_JENKINS_PUBLIC_IP"
-        echo "→ Using configured jenkins_public_ip: ${PUBLIC_IP}"
-    else
-        PUBLIC_IP=$(detect_public_ip)
-        echo "→ Auto-detected IP: ${PUBLIC_IP} (set jenkins_public_ip in gerrit_central.yml to override)"
-    fi
+    resolve_jenkins_url
     ensure_tls_cert
     ensure_admin_password
 
     # JCasC still needs the raw PEM — hand it over as a real YAML file, not
     # inline -e key=value (the key's newlines would collide with Ansible's
     # whitespace-split parsing of multiple pairs in one -e). The resolved
-    # TLS paths and admin password ride along, overriding the config's
-    # (possibly blank) ones — and keep the password off any command line.
+    # TLS paths, admin password and resolved URL parts ride along,
+    # overriding the config's (possibly blank) ones — and keep the password
+    # off any command line.
     local key_vars_file="${WORKDIR}/gerrit_ssh_private_key.yml"
-    CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 -c "import os,yaml,sys; yaml.safe_dump({'gerrit_ssh_private_key': open(sys.argv[1]).read(), 'tls_cert_file': sys.argv[3], 'tls_key_file': sys.argv[4], 'jenkins_admin_password': os.environ['CENTRAL_JENKINS_ADMIN_PASSWORD']}, open(sys.argv[2], 'w'))" \
-        "$CENTRAL_GERRIT_KEY_FILE" "$key_vars_file" "$TLS_CERT_FILE" "$TLS_KEY_FILE"
+    CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 - "$key_vars_file" \
+        "$CENTRAL_GERRIT_KEY_FILE" "$TLS_CERT_FILE" "$TLS_KEY_FILE" \
+        "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" <<'PYEOF'
+import os, sys, yaml
+dst, key_file, cert, key, url, scheme, host, prefix = sys.argv[1:9]
+yaml.safe_dump({
+    'gerrit_ssh_private_key': open(key_file).read(),
+    'tls_cert_file': cert,
+    'tls_key_file': key,
+    'jenkins_admin_password': os.environ['CENTRAL_JENKINS_ADMIN_PASSWORD'],
+    'jenkins_url': url,
+    'jenkins_scheme': scheme,
+    'jenkins_host': host,
+    'jenkins_prefix': prefix,
+}, open(dst, 'w'))
+PYEOF
 
-    local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "jenkins_public_ip=${PUBLIC_IP}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile")
+    local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile")
     ansible-playbook -i "localhost," -c local -b \
         "${extra_vars[@]}" \
         "${REPO_ROOT}/central_deploy/deploy_jenkins.yml"
@@ -226,7 +260,7 @@ verify_deploy() {
     JENKINS_PORT=$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_http_port'])")
     # Straight to Jenkins on localhost, not through nginx — this script
     # runs on the server itself, and the role already checked nginx.
-    JENKINS_URL="http://127.0.0.1:${JENKINS_PORT}"
+    JENKINS_URL="http://127.0.0.1:${JENKINS_PORT}${JENKINS_PREFIX}"
     DUMMY_JOB="jenkins-dr-test"
 
     wait_for_gerrit_connected
@@ -275,7 +309,7 @@ main() {
 
     run_deploy
     verify_deploy
-    JENKINS_URL="https://${PUBLIC_IP}"
+    JENKINS_URL="${JENKINS_EXT_URL}/"
     if [[ "$CENTRAL_VERIFY_PUSH" == true ]]; then
         print_final_status "✓ Central Jenkins installed and Gerrit trigger verified end-to-end."
     else
@@ -283,6 +317,9 @@ main() {
     fi
     if [[ "$ADMIN_PASSWORD_GENERATED" == true ]]; then
         echo "  Admin password: sudo cat ${GENERATED_ADMIN_PASSWORD_FILE}"
+    fi
+    if [[ "$JENKINS_SCHEME" == http ]]; then
+        echo "  ⚠ Plain HTTP: logins, API tokens and agent secrets cross the network unencrypted."
     fi
     if [[ "$TLS_SELF_SIGNED" == true ]]; then
         echo "  Self-signed certificate: ${TLS_CERT_FILE}"

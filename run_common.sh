@@ -101,7 +101,7 @@ d = {
     'email': email,
     'display_name': display_name,
     'change_id': change_id,
-    'jenkins_public_ip': ip,
+    'jenkins_url': f'https://{ip}',
     'tls_cert_file': '',
     'tls_key_file': '',
 }
