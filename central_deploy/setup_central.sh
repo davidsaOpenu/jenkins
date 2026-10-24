@@ -2,7 +2,7 @@
 # One command from a bare machine to a running central Jenkins — for
 # disaster recovery, and what CI's run.sh runs inside its jenkins-01 VM.
 #
-#   sudo ./central_deploy/setup_central.sh <gerrit_central.yml> [--replace-old-jenkins]
+#   sudo ./central_deploy/setup_central.sh <gerrit_central.yml> [--replace-old-jenkins] [--with-repo-jobs]
 #
 # Prepares the machine, then hands over to deploy_central_jenkins.sh:
 #   1. prerequisites (Ansible, Python YAML, curl, git, openssl);
@@ -16,7 +16,9 @@
 #      locations still proxying to that port. Anything this repo installed
 #      carries a marker and is never touched;
 #   4. opens jenkins_url's port in ufw / firewalld, if one is active;
-#   5. deploy_central_jenkins.sh — install, configure, verify.
+#   5. deploy_central_jenkins.sh — install, configure, verify;
+#   6. with --with-repo-jobs (disaster recovery only — CI never passes it):
+#      create_repo_jobs.sh — one pipeline job per jobs/<name>/Jenkinsfile.
 # Safe to re-run.
 set -euo pipefail
 
@@ -30,17 +32,19 @@ unset http_proxy https_proxy ftp_proxy all_proxy HTTP_PROXY HTTPS_PROXY FTP_PROX
 JENKINS_HOME_DIR="/var/lib/jenkins"
 
 usage() {
-    echo "Usage: sudo $0 <path-to-gerrit_central.yml> [--replace-old-jenkins]" >&2
+    echo "Usage: sudo $0 <path-to-gerrit_central.yml> [--replace-old-jenkins] [--with-repo-jobs]" >&2
     exit 1
 }
 
 parse_args() {
     ACCOUNTS_FILE=""
     REPLACE_OLD=false
+    REPO_JOBS=false
     local arg
     for arg in "$@"; do
         case "$arg" in
             --replace-old-jenkins) REPLACE_OLD=true ;;
+            --with-repo-jobs) REPO_JOBS=true ;;
             -*) usage ;;
             *) [[ -z "$ACCOUNTS_FILE" ]] || usage; ACCOUNTS_FILE="$arg" ;;
         esac
@@ -228,7 +232,12 @@ main() {
     open_firewall
 
     title "Install and verify (deploy_central_jenkins.sh)"
-    exec "${SCRIPT_DIR}/deploy_central_jenkins.sh" "$ACCOUNTS_FILE"
+    "${SCRIPT_DIR}/deploy_central_jenkins.sh" "$ACCOUNTS_FILE"
+
+    if [[ "$REPO_JOBS" == true ]]; then
+        title "Jobs from this repo (create_repo_jobs.sh)"
+        "${SCRIPT_DIR}/create_repo_jobs.sh" "$ACCOUNTS_FILE"
+    fi
 }
 
 main "$@"

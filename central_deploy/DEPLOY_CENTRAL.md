@@ -78,6 +78,12 @@ On a machine that already runs (or ran) a hand-made Jenkins, add
 
     sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml --replace-old-jenkins
 
+To also recreate the real CI jobs — one per `jobs/<name>/Jenkinsfile` in
+this repo — add `--with-repo-jobs` (see "Jobs" below). This is the full
+disaster-recovery command:
+
+    sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml --replace-old-jenkins --with-repo-jobs
+
 It never prompts, so it can run unattended. Takes several minutes on a fresh machine. Safe to re-run any time — to
 reapply config, after fixing a problem, or to recover.
 
@@ -111,6 +117,36 @@ reapply config, after fixing a problem, or to recover.
    reports it is **connected to GerritHub** — only then prints success.
    With `email`/`display_name`/`change_id` set it also pushes a real
    patchset and waits for the `jenkins-dr-test` job to build it.
+6. With `--with-repo-jobs` only: runs `create_repo_jobs.sh` — see "Jobs".
+
+## Jobs (`--with-repo-jobs`)
+
+`central_deploy/create_repo_jobs.sh` creates one pipeline job per
+`jobs/<name>/Jenkinsfile` (named `<name>`; `jenkins-dr-test` is left to the
+JCasC config). It is the disaster-recovery path only — CI's `run.sh` never
+runs it. It can also be run on its own after a deploy:
+
+    sudo ./central_deploy/create_repo_jobs.sh central_deploy/gerrit_central.yml
+
+- Each job is "Pipeline script from SCM": it reads its Jenkinsfile from
+  `https://review.gerrithub.io/davidsaOpenu/jenkins` (`master`) at every
+  build, so a merged Jenkinsfile change applies on the next build with no
+  redeploy. Only the *list* of jobs comes from your checkout — re-run after
+  adding a `jobs/<name>/` folder. (`--repo-url` / `--branch` to override.)
+- A pipeline's Gerrit/cron triggers only register when it runs, so each new
+  job is **primed**: a build is started and aborted as soon as the pipeline
+  has been read, before any stage does work (twice for parameterized jobs,
+  so the branch pattern picks up the `GERRIT_BRANCH` default). These show
+  as aborted builds #1–#2.
+- Re-running is safe: jobs already pointing at the right Jenkinsfile, with
+  triggers registered, are left alone.
+
+What the jobs need from the machine — they run on the built-in node as the
+`jenkins` user, as before: the tools their Jenkinsfiles call (e.g. docker,
+vagrant/libvirt for the VM-based ones) and the matching group memberships
+for `jenkins`. Pipelines that call Jenkins' internal API (e.g.
+`periodic-tasks`) need their methods approved once in Manage Jenkins →
+In-process Script Approval after their first real run.
 
 ## 4. After it succeeds
 
