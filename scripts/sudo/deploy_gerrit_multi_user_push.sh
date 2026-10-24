@@ -17,13 +17,15 @@
 # WHAT IT DOES (idempotent — safe to re-run):
 #   1. Verifies it's run as root and that all source files exist
 #      (4 in this directory, gerrit_users.sh one directory up), and that
-#      `jenkins` can't write any of them or any directory above them —
-#      otherwise jenkins could swap a script before it's installed as a
-#      root-run, sudo-allowed binary. Run this from a fresh clone owned by
+#      nobody but root and you (the user who ran sudo) can write any of
+#      them or any directory above them — by ownership, group or world
+#      write bits, or ACLs — otherwise someone (jenkins, another user on
+#      the host) could swap a script before it's installed as a root-run,
+#      sudo-allowed binary. Run this from a fresh clone owned by
 #      you or root, never from a Jenkins workspace, and diff the printed
 #      checksums against the reviewed commit before continuing.
-#   2. Forces /opt/ci to root:root 0755 (and refuses if jenkins can write
-#      it or any parent), then creates /opt/ci/secrets and /opt/ci/state
+#   2. Forces /opt/ci to root:root 0755 (and refuses if anyone but root
+#      and you can write it or any parent), then creates /opt/ci/secrets and /opt/ci/state
 #      (root:root, 0700).
 #   3. Installs all 5 scripts to /opt/ci/ (root:root, 0700).
 #   4. Creates /opt/ci/secrets/gerrit_tokens.env from a template and
@@ -84,29 +86,103 @@ if [[ ! -f "${USERS_SOURCE}" ]]; then
   exit 1
 fi
 
-# Exits if jenkins can write $1 or any directory above it (write access
-# to a directory = can rename/replace the entry). Resolved with realpath
-# so a symlink can't hide the real location.
-refuse_if_jenkins_writable() {
-  id jenkins &>/dev/null || return 0
-  local path
-  path="$(realpath -e "$1")"
-  while :; do
-    if runuser -u jenkins -- test -w "${path}"; then
-      echo "ERROR: ${path} is writable by jenkins — refusing to continue:" >&2
-      echo "       jenkins could swap $1, which root runs via sudo." >&2
-      echo "       Deploy from a clone jenkins can't modify (owned by you or" >&2
-      echo "       root, not a workspace), and keep ${INSTALL_DIR}'s parents root-owned." >&2
-      exit 1
-    fi
-    [[ "${path}" == "/" ]] && break
-    path="$(dirname "${path}")"
-  done
+# Only root and whoever ran sudo may be able to change what gets installed
+# — or the directories above it (write access to a directory = can rename
+# or replace its entries). Run directly as root (no SUDO_USER), only root.
+TRUSTED_USER="${SUDO_USER:-root}"
+
+# Exits if anyone other than root / TRUSTED_USER can write $1 or any
+# directory above it: by owning it, a group write bit whose group has other
+# members, a world write bit (a sticky dir like /tmp is fine: others can't
+# rename or delete entries they don't own), or an ACL entry. Resolved with
+# realpath so a symlink can't hide the real location.
+refuse_if_writable_by_others() {
+  python3 - "$1" "${TRUSTED_USER}" <<'PYEOF'
+import grp, os, pwd, shutil, stat, subprocess, sys
+
+target, trusted_user = sys.argv[1], sys.argv[2]
+trusted = {"root", trusted_user}
+
+def user_name(uid):
+    try:
+        return pwd.getpwuid(uid).pw_name
+    except KeyError:
+        return f"uid {uid}"
+
+def group_members(gid):
+    try:
+        names = set(grp.getgrgid(gid).gr_mem)
+    except KeyError:
+        return {f"gid {gid} (unknown)"}
+    return names | {p.pw_name for p in pwd.getpwall() if p.pw_gid == gid}
+
+def group_name(gid):
+    try:
+        return grp.getgrgid(gid).gr_name
+    except KeyError:
+        return f"gid {gid}"
+
+def acl_writers(path):
+    """Users/groups an ACL grants write to (beyond the mode bits)."""
+    try:
+        has_acl = any(a.startswith("system.posix_acl") for a in os.listxattr(path))
+    except OSError:
+        has_acl = False
+    if not has_acl:
+        return []
+    if not shutil.which("getfacl"):
+        return [f"{path}: has an ACL, and getfacl isn't installed to check it (apt/dnf install acl)"]
+    out = subprocess.run(["getfacl", "-cpn", path], capture_output=True, text=True).stdout
+    found = []
+    for line in out.splitlines():
+        parts = line.split(":")
+        if len(parts) < 3 or not parts[1] or "w" not in parts[2]:
+            continue  # owner/group/other/mask entries are covered by the mode bits
+        kind, ident = parts[0], int(parts[1])
+        if kind in ("user", "default:user"):
+            name = user_name(ident)
+            if name not in trusted:
+                found.append(f"{path}: ACL lets user {name} write")
+        elif kind in ("group", "default:group"):
+            extra = group_members(ident) - trusted
+            if extra:
+                found.append(f"{path}: ACL lets group {group_name(ident)} write ({', '.join(sorted(extra))})")
+    return found
+
+problems = []
+path = os.path.realpath(target)
+if not os.path.exists(path):
+    problems.append(f"{path}: does not exist")
+while not problems:
+    st = os.stat(path)
+    owner = user_name(st.st_uid)
+    if owner not in trusted:
+        problems.append(f"{path}: owned by {owner}")
+    if st.st_mode & stat.S_IWGRP:
+        extra = group_members(st.st_gid) - trusted
+        if extra:
+            problems.append(f"{path}: group-writable by {group_name(st.st_gid)} ({', '.join(sorted(extra))})")
+    if st.st_mode & stat.S_IWOTH and not (stat.S_ISDIR(st.st_mode) and st.st_mode & stat.S_ISVTX):
+        problems.append(f"{path}: world-writable")
+    problems += acl_writers(path)
+    if path == "/":
+        break
+    path = os.path.dirname(path)
+
+if problems:
+    print(f"ERROR: someone other than root and {trusted_user} can change {target}"
+          " — refusing to install it as a root-run, sudo-allowed script:", file=sys.stderr)
+    for p in problems:
+        print(f"       {p}", file=sys.stderr)
+    print(f"       Deploy from a clone only root and {trusted_user} can modify"
+          " (e.g. a fresh clone in your home, not a shared or workspace directory).", file=sys.stderr)
+    sys.exit(1)
+PYEOF
 }
 
-# Refuse any source jenkins could tamper with before root installs it.
+# Refuse any source someone else could tamper with before root installs it.
 for src in "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}"; do
-  refuse_if_jenkins_writable "${src}"
+  refuse_if_writable_by_others "${src}"
 done
 
 echo "==> Deploying from: ${SCRIPT_DIR}"
@@ -124,7 +200,7 @@ sha256sum "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}" | sed 's/^/  
 mkdir -p "${INSTALL_DIR}"
 chown root:root "${INSTALL_DIR}"
 chmod 755 "${INSTALL_DIR}"
-refuse_if_jenkins_writable "${INSTALL_DIR}"
+refuse_if_writable_by_others "${INSTALL_DIR}"
 echo "==> Install dir ready: ${INSTALL_DIR} (root:root, 755)"
 
 mkdir -p "${SECRETS_DIR}"
