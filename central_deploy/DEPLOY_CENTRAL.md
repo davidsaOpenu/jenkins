@@ -30,7 +30,7 @@ CI run means this exact install works.
      in clear text); a path becomes Jenkins' URL prefix.
      nginx in front is the only way in — Jenkins itself listens on
      localhost only. Blank means `https://<auto-detected IP>`.
-   - `jenkins_http_port` — the port Jenkins listens on behind nginx,
+   - `jenkins_internal_port` — the port Jenkins listens on behind nginx,
      on 127.0.0.1 only (default 8080). Change it only if 8080 is taken.
    - `tls_cert_file`, `tls_key_file` — https only: a real certificate and
      key. Blank creates a self-signed one at
@@ -49,14 +49,14 @@ CI run means this exact install works.
 
    On a machine that already ran a hand-made Jenkins, the script first
    checks for leftovers and stops if it finds any:
-   - another process on `jenkins_http_port` (e.g. an old Jenkins) — stop it;
+   - another process on `jenkins_internal_port` (e.g. an old Jenkins) — stop it;
    - an nginx `location` elsewhere (e.g. in `/etc/nginx/nginx.conf`) still
      proxying to that port — it would keep serving the new Jenkins over
      plain HTTP. Remove just those blocks (other apps' locations are kept;
      every changed file is backed up and `nginx -t`-checked, restored on
      failure):
 
-         sudo ./central_deploy/nginx_jenkins_proxies.py --port <jenkins_http_port> --apply
+         sudo ./central_deploy/nginx_jenkins_proxies.py --port <jenkins_internal_port> --apply
 
    Also move an old `/var/lib/jenkins` aside first (e.g. one created by a
    Jenkins run as root) — the new Jenkins runs as the `jenkins` user.

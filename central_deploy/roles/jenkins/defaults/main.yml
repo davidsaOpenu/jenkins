@@ -1,13 +1,13 @@
 ---
 jenkins_home: /var/lib/jenkins
-jenkins_http_port: 8080
+jenkins_internal_port: 8080
 # Jenkins LTS version. Empty = auto-detect. Fetched via get.jenkins.io
 # (Azure), not pkg.jenkins.io — its Fastly CDN range is blackholed here.
 jenkins_version: ""
 # Jenkins' externally-reachable URL, and its parts: scheme is TLS or not,
 # listen_port is nginx's port (443/80 unless the URL names one), host is
 # nginx's server_name, prefix ("" or e.g. "/jenkins") is Jenkins' --prefix
-# and nginx's location. jenkins_http_port above stays localhost-only.
+# and nginx's location. jenkins_internal_port above stays localhost-only.
 # deploy_central_jenkins.sh resolves all of these from gerrit_central.yml's
 # jenkins_url; the defaults here are only for a manual run against the
 # CI test VM.

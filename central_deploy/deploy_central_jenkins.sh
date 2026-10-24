@@ -133,11 +133,11 @@ resolve_jenkins_url() {
         if [[ "$JENKINS_SCHEME" == https ]]; then JENKINS_LISTEN_PORT=443; else JENKINS_LISTEN_PORT=80; fi
     fi
 
-    # Jenkins' own localhost port: the config's jenkins_http_port, else the
+    # Jenkins' own localhost port: the config's jenkins_internal_port, else the
     # role default. Can't be the port nginx listens on.
-    JENKINS_HTTP_PORT="${CENTRAL_JENKINS_HTTP_PORT:-$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_http_port'])")}"
-    if [[ "$JENKINS_HTTP_PORT" == "$JENKINS_LISTEN_PORT" ]]; then
-        echo "✗ jenkins_http_port ${JENKINS_HTTP_PORT} is also the port in jenkins_url — nginx and Jenkins can't share it" >&2
+    JENKINS_INTERNAL_PORT="${CENTRAL_JENKINS_INTERNAL_PORT:-$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_internal_port'])")}"
+    if [[ "$JENKINS_INTERNAL_PORT" == "$JENKINS_LISTEN_PORT" ]]; then
+        echo "✗ jenkins_internal_port ${JENKINS_INTERNAL_PORT} is also the port in jenkins_url — nginx and Jenkins can't share it" >&2
         exit 1
     fi
 }
@@ -145,25 +145,25 @@ resolve_jenkins_url() {
 # Leftovers from an earlier hand-made Jenkins on this machine, checked
 # before anything is installed:
 # - something other than the jenkins systemd service holding
-#   jenkins_http_port (an old Jenkins started by hand, or nginx itself) —
+#   jenkins_internal_port (an old Jenkins started by hand, or nginx itself) —
 #   Jenkins would just fail to start;
 # - an nginx location elsewhere still proxying to that port — it would keep
 #   serving the new Jenkins on its old listener, bypassing this HTTPS site.
 #   nginx_jenkins_proxies.py reports them, and removes them with --apply.
 preflight_host() {
     local pids own_pid pid
-    pids=$(ss -ltnpH "sport = :${JENKINS_HTTP_PORT}" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u)
+    pids=$(ss -ltnpH "sport = :${JENKINS_INTERNAL_PORT}" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u)
     own_pid=$(systemctl show -p MainPID --value jenkins 2>/dev/null || true)
     for pid in $pids; do
         [[ "$pid" == "$own_pid" ]] && continue
-        echo "✗ Port ${JENKINS_HTTP_PORT} (jenkins_http_port) is already taken by another process:" >&2
+        echo "✗ Port ${JENKINS_INTERNAL_PORT} (jenkins_internal_port) is already taken by another process:" >&2
         ps -o pid=,user=,args= -p "$pid" | cut -c1-200 | sed 's/^/    /' >&2
-        echo "  Stop it (an old Jenkins?) or pick a free jenkins_http_port." >&2
+        echo "  Stop it (an old Jenkins?) or pick a free jenkins_internal_port." >&2
         exit 1
     done
 
     local rc=0
-    python3 "${SCRIPT_DIR}/nginx_jenkins_proxies.py" --port "$JENKINS_HTTP_PORT" || rc=$?
+    python3 "${SCRIPT_DIR}/nginx_jenkins_proxies.py" --port "$JENKINS_INTERNAL_PORT" || rc=$?
     [[ "$rc" -eq 0 ]] || exit 1
 }
 
@@ -249,9 +249,9 @@ run_deploy() {
     CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 - "$key_vars_file" \
         "$CENTRAL_GERRIT_KEY_FILE" "$TLS_CERT_FILE" "$TLS_KEY_FILE" \
         "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" "$JENKINS_LISTEN_PORT" \
-        "$JENKINS_HTTP_PORT" <<'PYEOF'
+        "$JENKINS_INTERNAL_PORT" <<'PYEOF'
 import os, sys, yaml
-dst, key_file, cert, key, url, scheme, host, prefix, listen_port, http_port = sys.argv[1:11]
+dst, key_file, cert, key, url, scheme, host, prefix, listen_port, internal_port = sys.argv[1:11]
 yaml.safe_dump({
     'gerrit_ssh_private_key': open(key_file).read(),
     'tls_cert_file': cert,
@@ -262,7 +262,7 @@ yaml.safe_dump({
     'jenkins_host': host,
     'jenkins_prefix': prefix,
     'jenkins_listen_port': int(listen_port),
-    'jenkins_http_port': int(http_port),
+    'jenkins_internal_port': int(internal_port),
 }, open(dst, 'w'))
 PYEOF
 
@@ -301,7 +301,7 @@ verify_deploy() {
     ADMIN_PASS="$CENTRAL_JENKINS_ADMIN_PASSWORD"
     # Straight to Jenkins on localhost, not through nginx — this script
     # runs on the server itself, and the role already checked nginx.
-    JENKINS_URL="http://127.0.0.1:${JENKINS_HTTP_PORT}${JENKINS_PREFIX}"
+    JENKINS_URL="http://127.0.0.1:${JENKINS_INTERNAL_PORT}${JENKINS_PREFIX}"
     DUMMY_JOB="jenkins-dr-test"
 
     wait_for_gerrit_connected

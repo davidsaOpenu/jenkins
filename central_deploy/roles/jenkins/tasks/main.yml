@@ -237,7 +237,7 @@
       # strings. preferIPv4Stack matters because this JVM (Gerrit SSH,
       # update checks) has its own IPv6 preference, past curl -4/dnf's
       # reach and past gai.conf, which Java doesn't consult.
-      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins.war --httpListenAddress=127.0.0.1 --httpPort={{ jenkins_http_port }}{{ (' --prefix=' ~ jenkins_prefix) if jenkins_prefix else '' }}
+      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins.war --httpListenAddress=127.0.0.1 --httpPort={{ jenkins_internal_port }}{{ (' --prefix=' ~ jenkins_prefix) if jenkins_prefix else '' }}
       Restart=on-failure
       TimeoutStartSec=300
 
@@ -360,7 +360,7 @@
 - name: Wait for Jenkins to be ready with new JCasC
   block:
     - ansible.builtin.uri:
-        url: "http://localhost:{{ jenkins_http_port }}{{ jenkins_prefix }}/login"
+        url: "http://localhost:{{ jenkins_internal_port }}{{ jenkins_prefix }}/login"
         status_code: 200
       register: jenkins_up
       retries: 60
@@ -383,7 +383,7 @@
     - ansible.builtin.debug:
         msg: "{{ jenkins_status_dump.stdout_lines + ['---'] + jenkins_journal_dump.stdout_lines }}"
     - ansible.builtin.fail:
-        msg: "Jenkins never came up on :{{ jenkins_http_port }} — see service status/log dumped above."
+        msg: "Jenkins never came up on :{{ jenkins_internal_port }} — see service status/log dumped above."
   tags: configure
 
 # nginx is the only way in from outside: HTTPS (or plain HTTP when

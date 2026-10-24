@@ -397,10 +397,13 @@ if url:
         sys.exit(1)
 # Jenkins' own port, on 127.0.0.1 behind nginx — only ever needs changing
 # when something else on the machine already holds the default 8080.
-http_port = d.get('jenkins_http_port') or ''
-if http_port != '':
-    if not re.fullmatch(r'[0-9]{1,5}', str(http_port)) or not 1 <= int(http_port) <= 65535:
-        print(f"✗ {path}: jenkins_http_port must be a port number, got {http_port}", file=sys.stderr)
+if 'jenkins_http_port' in d:
+    print(f"✗ {path}: jenkins_http_port was renamed to jenkins_internal_port — rename it", file=sys.stderr)
+    sys.exit(1)
+internal_port = d.get('jenkins_internal_port') or ''
+if internal_port != '':
+    if not re.fullmatch(r'[0-9]{1,5}', str(internal_port)) or not 1 <= int(internal_port) <= 65535:
+        print(f"✗ {path}: jenkins_internal_port must be a port number, got {internal_port}", file=sys.stderr)
         sys.exit(1)
 print(f'CENTRAL_JENKINS_ADMIN_PASSWORD\t{d.get("jenkins_admin_password") or ""}')
 print(f'CENTRAL_GERRIT_USERNAME\t{d["gerrit_username"]}')
@@ -409,7 +412,7 @@ print(f'CENTRAL_GERRIT_EMAIL\t{d.get("email") or ""}')
 print(f'CENTRAL_GERRIT_DISPLAY_NAME\t{d.get("display_name") or ""}')
 print(f'CENTRAL_CHANGE_ID\t{d.get("change_id") or ""}')
 print(f'CENTRAL_JENKINS_URL\t{url}')
-print(f'CENTRAL_JENKINS_HTTP_PORT\t{http_port}')
+print(f'CENTRAL_JENKINS_INTERNAL_PORT\t{internal_port}')
 print(f'CENTRAL_TLS_CERT_FILE\t{d.get("tls_cert_file") or ""}')
 print(f'CENTRAL_TLS_KEY_FILE\t{d.get("tls_key_file") or ""}')
 PYEOF

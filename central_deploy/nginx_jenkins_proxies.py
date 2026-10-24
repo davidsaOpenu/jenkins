@@ -154,7 +154,7 @@ def candidate_files():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--port", type=int, required=True, help="Jenkins' localhost port (jenkins_http_port)")
+    ap.add_argument("--port", type=int, required=True, help="Jenkins' localhost port (jenkins_internal_port)")
     ap.add_argument("--apply", action="store_true", help="remove the blocks, nginx -t, reload")
     args = ap.parse_args()
 
