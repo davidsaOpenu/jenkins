@@ -7,3 +7,4 @@ central_deploy/gerrit_agents.yml
 central_deploy/gerrit_central.yml
 POST_DEPLOY_RECOVERY_CHECKLIST.md
 jenkins_inline_script.groovy
+__pycache__/

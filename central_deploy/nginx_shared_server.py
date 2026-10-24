@@ -30,6 +30,8 @@ import shutil
 import subprocess
 import sys
 
+# Run as root from a user's checkout: don't leave a root-owned __pycache__.
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nginx_jenkins_proxies import candidate_files, parse  # noqa: E402
 
