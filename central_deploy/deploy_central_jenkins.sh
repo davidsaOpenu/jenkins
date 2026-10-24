@@ -2,6 +2,11 @@
 # Installs central Jenkins + the dummy job + Gerrit wiring — the actual
 # disaster-recovery tool. Usage: sudo ./deploy_central_jenkins.sh
 # <path-to-gerrit_central.yml>. Always verifies via a real Gerrit push.
+#
+# The ONE install path: run as-is on a real machine for disaster recovery,
+# and run.sh runs this same script, same command, same config shape inside
+# its jenkins-01 VM for CI. Anything machine-specific belongs in here (or
+# in the role), never in run.sh — otherwise CI stops testing what DR does.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,6 +55,11 @@ install_prereqs() {
     fi
 }
 
+# Where a self-signed certificate goes when the config names none.
+# Distro-neutral on purpose (not /etc/pki or /etc/ssl) — same path on every
+# supported OS. run_common.sh fetches the .crt from here for the agent VMs.
+GENERATED_TLS_DIR="/etc/jenkins-dr/tls"
+
 detect_public_ip() {
     local ip
     ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
@@ -59,6 +69,44 @@ detect_public_ip() {
         exit 1
     fi
     echo "$ip"
+}
+
+# Uses the certificate the config names, or — when it names none — a
+# self-signed one for PUBLIC_IP under GENERATED_TLS_DIR. Made once and
+# reused across re-runs while it still matches PUBLIC_IP and isn't about to
+# expire, so agents that already trust it keep working. Sets
+# TLS_CERT_FILE / TLS_KEY_FILE / TLS_SELF_SIGNED.
+ensure_tls_cert() {
+    if [[ -n "$CENTRAL_TLS_CERT_FILE" ]]; then
+        TLS_CERT_FILE="$CENTRAL_TLS_CERT_FILE"
+        TLS_KEY_FILE="$CENTRAL_TLS_KEY_FILE"
+        TLS_SELF_SIGNED=false
+        return 0
+    fi
+    TLS_CERT_FILE="${GENERATED_TLS_DIR}/jenkins-dr.crt"
+    TLS_KEY_FILE="${GENERATED_TLS_DIR}/jenkins-dr.key"
+    TLS_SELF_SIGNED=true
+
+    local check san
+    if [[ "$PUBLIC_IP" =~ ^[0-9.]+$ ]]; then
+        check=(-checkip "$PUBLIC_IP"); san="IP:${PUBLIC_IP}"
+    else
+        check=(-checkhost "$PUBLIC_IP"); san="DNS:${PUBLIC_IP}"
+    fi
+    if [[ -f "$TLS_CERT_FILE" && -f "$TLS_KEY_FILE" ]] \
+        && openssl x509 -in "$TLS_CERT_FILE" -noout -checkend 86400 >/dev/null \
+        && openssl x509 -in "$TLS_CERT_FILE" -noout "${check[@]}" | grep -q ' does match '; then
+        echo "→ Reusing self-signed certificate ${TLS_CERT_FILE} (${san})"
+        return 0
+    fi
+
+    echo "→ No tls_cert_file configured — creating a self-signed certificate for ${san}..."
+    mkdir -p "$GENERATED_TLS_DIR"
+    chmod 755 "$GENERATED_TLS_DIR"
+    (umask 077 && openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+        -subj "/CN=${PUBLIC_IP}" -addext "subjectAltName=${san}" \
+        -keyout "$TLS_KEY_FILE" -out "$TLS_CERT_FILE" 2>/dev/null)
+    chmod 644 "$TLS_CERT_FILE"
 }
 
 run_deploy() {
@@ -73,13 +121,15 @@ run_deploy() {
         PUBLIC_IP=$(detect_public_ip)
         echo "→ Auto-detected IP: ${PUBLIC_IP} (set jenkins_public_ip in gerrit_central.yml to override)"
     fi
+    ensure_tls_cert
 
     # JCasC still needs the raw PEM — hand it over as a real YAML file, not
     # inline -e key=value (the key's newlines would collide with Ansible's
-    # whitespace-split parsing of multiple pairs in one -e).
+    # whitespace-split parsing of multiple pairs in one -e). The resolved
+    # TLS paths ride along, overriding the config's (possibly blank) ones.
     local key_vars_file="${WORKDIR}/gerrit_ssh_private_key.yml"
-    python3 -c "import yaml,sys; yaml.safe_dump({'gerrit_ssh_private_key': open(sys.argv[1]).read()}, open(sys.argv[2], 'w'))" \
-        "$CENTRAL_GERRIT_KEY_FILE" "$key_vars_file"
+    python3 -c "import yaml,sys; yaml.safe_dump({'gerrit_ssh_private_key': open(sys.argv[1]).read(), 'tls_cert_file': sys.argv[3], 'tls_key_file': sys.argv[4]}, open(sys.argv[2], 'w'))" \
+        "$CENTRAL_GERRIT_KEY_FILE" "$key_vars_file" "$TLS_CERT_FILE" "$TLS_KEY_FILE"
 
     local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "jenkins_public_ip=${PUBLIC_IP}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile")
     ansible-playbook -i "localhost," -c local -b \
@@ -123,6 +173,11 @@ verify_deploy() {
 main() {
     parse_args "$@"
     require_root
+    # Root's own home, however sudo was invoked — `sudo` vs `sudo -H` and
+    # distro defaults disagree on HOME, and load_central_account looks for
+    # the Gerrit key under ~/.ssh. Always /root/.ssh, on every machine.
+    HOME="$(getent passwd root | cut -d: -f6)"
+    export HOME
     install_prereqs
 
     WORKDIR=$(mktemp -d)
@@ -132,6 +187,10 @@ main() {
     verify_deploy
     JENKINS_URL="https://${PUBLIC_IP}"
     print_final_status "✓ Central Jenkins installed and Gerrit trigger verified end-to-end."
+    if [[ "$TLS_SELF_SIGNED" == true ]]; then
+        echo "  Self-signed certificate: ${TLS_CERT_FILE}"
+        echo "  Give students a copy — it's their central_ca_cert (see student_deploy/CONNECT_AGENT.md)."
+    fi
 }
 
 main "$@"

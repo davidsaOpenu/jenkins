@@ -68,10 +68,10 @@ common_setup() {
     LIBVIRT_URI="qemu:///system"
     CENTRAL_IP="${CENTRAL_IP:-192.168.100.170}"
     JENKINS_URL="https://${CENTRAL_IP}"
-    # Where the throwaway self-signed certificate lives: made inside the
-    # central VM (deploy_central), then handed to each agent VM.
-    CENTRAL_TLS_CERT="/etc/pki/tls/certs/jenkins-dr.crt"
-    CENTRAL_TLS_KEY="/etc/pki/tls/private/jenkins-dr.key"
+    # Where deploy_central_jenkins.sh puts the self-signed certificate it
+    # makes when the config names none (its GENERATED_TLS_DIR) — fetched
+    # from the central VM after deploy, then handed to each agent VM.
+    CENTRAL_GENERATED_CERT="/etc/jenkins-dr/tls/jenkins-dr.crt"
     AGENT_CA_CERT="/home/vagrant/jenkins-dr/central-ca.crt"
     DUMMY_JOB="jenkins-dr-test"
     # Login password for both test-student accounts — also what
@@ -81,16 +81,19 @@ common_setup() {
 }
 
 # Step: writes the central secrets file pushed into the VM — generated from
-# CENTRAL_* (set by load_gerrit_users). Sets CENTRAL_VM_SECRETS.
+# CENTRAL_* (set by load_gerrit_users), in exactly gerrit_central.yml's
+# shape. TLS is left blank, same as an operator without a real certificate:
+# deploy_central_jenkins.sh makes the self-signed one itself, so CI covers
+# that path too. Sets CENTRAL_VM_SECRETS.
 build_central_vm_secrets() {
     CENTRAL_VM_SECRETS="${WORKDIR}/gerrit_central_test.yml"
     python3 - "$CENTRAL_VM_SECRETS" \
         "$CENTRAL_JENKINS_ADMIN_PASSWORD" \
         "$CENTRAL_GERRIT_USERNAME" "$CENTRAL_SSH_KEY_NAME" "$CENTRAL_GERRIT_EMAIL" \
         "$CENTRAL_GERRIT_DISPLAY_NAME" "$CENTRAL_CHANGE_ID" \
-        "$CENTRAL_IP" "$CENTRAL_TLS_CERT" "$CENTRAL_TLS_KEY" <<'PYEOF'
+        "$CENTRAL_IP" <<'PYEOF'
 import sys, yaml
-dst, admin_pass, username, key_name, email, display_name, change_id, ip, tls_cert, tls_key = sys.argv[1:11]
+dst, admin_pass, username, key_name, email, display_name, change_id, ip = sys.argv[1:9]
 d = {
     'jenkins_admin_password': admin_pass,
     'gerrit_username': username,
@@ -99,8 +102,8 @@ d = {
     'display_name': display_name,
     'change_id': change_id,
     'jenkins_public_ip': ip,
-    'tls_cert_file': tls_cert,
-    'tls_key_file': tls_key,
+    'tls_cert_file': '',
+    'tls_key_file': '',
 }
 yaml.safe_dump(d, open(dst, 'w'))
 PYEOF
@@ -241,21 +244,19 @@ deploy_central() {
         "${vm_name}:/tmp/${CENTRAL_SSH_KEY_NAME}"
     run_in_vm "$vm_name" "sudo mv /tmp/${CENTRAL_SSH_KEY_NAME} /root/.ssh/${CENTRAL_SSH_KEY_NAME} && sudo chmod 600 /root/.ssh/${CENTRAL_SSH_KEY_NAME}"
 
-    create_central_tls_cert "$vm_name"
+    # The exact command DEPLOY_CENTRAL.md gives for a real machine.
+    run_in_vm "$vm_name" "sudo ./central_deploy/deploy_central_jenkins.sh gerrit_central_test.yml"
 
-    # -H forces HOME=/root explicitly — deploy_central_jenkins.sh resolves
-    # the key via ${HOME}/.ssh/, and this box's sudo default isn't assumed.
-    run_in_vm "$vm_name" "sudo -H ./central_deploy/deploy_central_jenkins.sh gerrit_central_test.yml"
+    fetch_central_ca_cert "$vm_name"
 }
 
-# Makes a throwaway self-signed certificate inside the central VM, at the
-# paths its config names. Sets CENTRAL_CA_CERT (a copy on this host) and
-# makes every later curl here trust it via CURL_CA_BUNDLE.
-create_central_tls_cert() {
+# Copies the self-signed certificate deploy_central_jenkins.sh made inside
+# the central VM. Sets CENTRAL_CA_CERT (a copy on this host) and makes every
+# later curl here trust it via CURL_CA_BUNDLE.
+fetch_central_ca_cert() {
     local vm_name="$1"
-    run_in_vm "$vm_name" "sudo openssl req -x509 -newkey rsa:2048 -nodes -days 30 -subj '/CN=${CENTRAL_IP}' -addext 'subjectAltName=IP:${CENTRAL_IP}' -keyout ${CENTRAL_TLS_KEY} -out ${CENTRAL_TLS_CERT}"
     CENTRAL_CA_CERT="${WORKDIR}/central-ca.crt"
-    run_in_vm "$vm_name" "sudo cat ${CENTRAL_TLS_CERT}" > "$CENTRAL_CA_CERT"
+    run_in_vm "$vm_name" "sudo cat ${CENTRAL_GENERATED_CERT}" > "$CENTRAL_CA_CERT"
 
     # The host's own CA list comes along, so anything else curl talks to
     # is trusted exactly as before.

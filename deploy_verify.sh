@@ -352,14 +352,19 @@ import os, sys, yaml
 path = sys.argv[1]
 d = yaml.safe_load(open(path)) or {}
 required = ['jenkins_admin_password', 'gerrit_username',
-            'ssh_key_name', 'email', 'display_name', 'change_id',
-            'tls_cert_file', 'tls_key_file']
+            'ssh_key_name', 'email', 'display_name', 'change_id']
 missing = [f for f in required if not d.get(f)]
 if missing:
     print(f"✗ {path}: missing/blank required field(s): {', '.join(missing)}", file=sys.stderr)
     sys.exit(1)
-for f in ('tls_cert_file', 'tls_key_file'):
-    if not os.path.isfile(d[f]):
+# TLS: both set (a real certificate) or both blank (deploy_central_jenkins.sh
+# makes a self-signed one) — never just one.
+tls = ('tls_cert_file', 'tls_key_file')
+if bool(d.get(tls[0])) != bool(d.get(tls[1])):
+    print(f"✗ {path}: set both tls_cert_file and tls_key_file, or leave both blank", file=sys.stderr)
+    sys.exit(1)
+for f in tls:
+    if d.get(f) and not os.path.isfile(d[f]):
         print(f"✗ {path}: {f} names {d[f]}, which is not a file on this machine", file=sys.stderr)
         sys.exit(1)
 print(f'CENTRAL_JENKINS_ADMIN_PASSWORD\t{d["jenkins_admin_password"]}')
@@ -369,6 +374,8 @@ print(f'CENTRAL_GERRIT_EMAIL\t{d["email"]}')
 print(f'CENTRAL_GERRIT_DISPLAY_NAME\t{d["display_name"]}')
 print(f'CENTRAL_CHANGE_ID\t{d["change_id"]}')
 print(f'CENTRAL_JENKINS_PUBLIC_IP\t{d.get("jenkins_public_ip") or ""}')
+print(f'CENTRAL_TLS_CERT_FILE\t{d.get("tls_cert_file") or ""}')
+print(f'CENTRAL_TLS_KEY_FILE\t{d.get("tls_key_file") or ""}')
 PYEOF
     ) || exit 1
     while IFS=$'\t' read -r key value; do

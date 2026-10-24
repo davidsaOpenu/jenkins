@@ -360,7 +360,8 @@
 
 # nginx is the only way in from outside: HTTPS on 443 in front of Jenkins,
 # which listens on localhost only. The certificate is whatever
-# tls_cert_file / tls_key_file in the config name — the role creates none.
+# tls_cert_file / tls_key_file resolve to — the config's own, or the
+# self-signed pair deploy_central_jenkins.sh made. The role creates none.
 - name: Install nginx
   ansible.builtin.dnf:
     name: nginx

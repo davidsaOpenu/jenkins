@@ -13,11 +13,12 @@ gerrit_username: ""
 # This identity's Jenkins login password.
 jenkins_admin_password: ""
 
-# Filename under ~/.ssh, on the machine that runs deploy_central_jenkins.sh,
-# of the private key registered to that GerritHub account. The key itself
+# Filename under /root/.ssh, on the machine that runs
+# deploy_central_jenkins.sh, of the private key registered to that
+# GerritHub account. The key itself
 # must already be there — this only names it.
-# Generate with: ssh-keygen -t ed25519 -f ~/.ssh/gerrit_jenkins_key -C "jenkins@swiftacular"
-# Register gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+# Generate with: sudo ssh-keygen -t ed25519 -f /root/.ssh/gerrit_jenkins_key -C "jenkins@swiftacular"
+# Register /root/.ssh/gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
 ssh_key_name: ""
 
 # Email registered to that GerritHub account (Settings > Email Addresses).
@@ -34,11 +35,11 @@ display_name: ""
 # as a new patchset on that same change instead of opening a new one.
 change_id: ""
 
-# The HTTPS certificate and its private key, as files already on this
-# machine — nginx serves Jenkins with them on port 443. No real one at
-# hand? A self-signed pair works (browsers warn, agents need the .crt):
-#   openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=<host>" \
-#     -addext "subjectAltName=IP:<ip>" -keyout jenkins.key -out jenkins.crt
+# Optional. The HTTPS certificate and its private key, as files already on
+# this machine — nginx serves Jenkins with them on port 443. Set both, or
+# leave both blank: deploy_central_jenkins.sh then creates a self-signed
+# pair for jenkins_public_ip at /etc/jenkins-dr/tls/ (browsers warn; give
+# students jenkins-dr.crt as their central_ca_cert).
 tls_cert_file: ""
 tls_key_file: ""
 
