@@ -376,16 +376,21 @@ for f in tls:
 if 'jenkins_public_ip' in d:
     print(f"✗ {path}: jenkins_public_ip was replaced by jenkins_url (e.g. https://{d['jenkins_public_ip'] or '<ip>'}) — rename it", file=sys.stderr)
     sys.exit(1)
-# jenkins_url: scheme://host[/path] — no port (nginx serves 80/443), no
-# query; the path becomes Jenkins' --prefix. Normalized without trailing /.
+# jenkins_url: scheme://host[:port][/path], no query — the port is what
+# nginx listens on (default 443/80), the path becomes Jenkins' --prefix.
+# Normalized without trailing /.
 url = (d.get('jenkins_url') or '').strip().rstrip('/')
 if url:
     from urllib.parse import urlsplit
     u = urlsplit(url)
-    if (u.scheme not in ('http', 'https') or not u.hostname or u.port
+    try:
+        port_ok = u.port is None or 1 <= u.port <= 65535
+    except ValueError:
+        port_ok = False
+    if (u.scheme not in ('http', 'https') or not u.hostname or not port_ok
             or u.query or u.fragment or u.username
             or not re.fullmatch(r'(/[A-Za-z0-9._-]+)*', u.path)):
-        print(f"✗ {path}: jenkins_url must look like https://host or http://host/jenkins (no port), got {url}", file=sys.stderr)
+        print(f"✗ {path}: jenkins_url must look like https://host[:port][/path], e.g. https://192.114.0.189:9090/jenkins, got {url}", file=sys.stderr)
         sys.exit(1)
     if u.scheme == 'http' and d.get('tls_cert_file'):
         print(f"✗ {path}: tls_cert_file/tls_key_file are set but jenkins_url is http:// — use https:// or drop them", file=sys.stderr)

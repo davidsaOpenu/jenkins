@@ -29,10 +29,11 @@ ssh_key_name: ""
 jenkins_admin_password: ""
 
 # The full address users and agents reach Jenkins at:
-#   https://<host>             HTTPS on 443 (default)
-#   http://<host>/jenkins      plain HTTP on 80, under a path
-# Scheme picks the port, the path (if any) becomes Jenkins' URL prefix.
-# No port number — nginx always serves 80 (http) or 443 (https).
+#   https://<host>                  HTTPS on 443 (default)
+#   https://<host>:9090/jenkins     HTTPS on 9090, under a path
+#   http://<host>/jenkins           plain HTTP on 80, under a path
+# nginx listens on the URL's port (443 for https / 80 for http if none is
+# given); the path (if any) becomes Jenkins' URL prefix.
 # Leave blank for https://<IP auto-detected from the default route> — only
 # safe on a machine with a single network interface. Plain http sends
 # logins and agent secrets unencrypted; prefer https.

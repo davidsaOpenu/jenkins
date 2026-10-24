@@ -2,13 +2,13 @@
 # listens on localhost only (see jenkins.service in tasks/main.yml).
 server {
 {% if jenkins_scheme == "https" %}
-    listen 443 ssl;
+    listen {{ jenkins_listen_port }} ssl;
     ssl_certificate     /etc/nginx/tls/jenkins.crt;
     ssl_certificate_key /etc/nginx/tls/jenkins.key;
 {% else %}
     # Plain HTTP (jenkins_url is http://): logins, API tokens and agent
     # secrets cross the network unencrypted.
-    listen 80;
+    listen {{ jenkins_listen_port }};
 {% endif %}
     # Picked by Host header — takes precedence over the distro's catch-all
     # default site on the same port.

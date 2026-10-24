@@ -112,7 +112,8 @@ detect_public_ip() {
 
 # Splits jenkins_url (already validated by load_central_account) — or, when
 # blank, https://<auto-detected IP> — into the parts nginx and Jenkins need.
-# Sets JENKINS_EXT_URL (no trailing /), JENKINS_SCHEME, JENKINS_HOST and
+# Sets JENKINS_EXT_URL (no trailing /), JENKINS_SCHEME, JENKINS_HOST,
+# JENKINS_LISTEN_PORT (nginx's; 443/80 unless the URL names one) and
 # JENKINS_PREFIX ("" or e.g. "/jenkins").
 resolve_jenkins_url() {
     if [[ -n "$CENTRAL_JENKINS_URL" ]]; then
@@ -122,11 +123,15 @@ resolve_jenkins_url() {
         JENKINS_EXT_URL="https://$(detect_public_ip)"
         echo "→ Auto-detected URL: ${JENKINS_EXT_URL} (set jenkins_url in gerrit_central.yml to override)"
     fi
-    [[ "$JENKINS_EXT_URL" =~ ^(https?)://([^/]+)(/.*)?$ ]] \
+    [[ "$JENKINS_EXT_URL" =~ ^(https?)://([^/:]+)(:([0-9]+))?(/.*)?$ ]] \
         || { echo "✗ Can't parse jenkins_url ${JENKINS_EXT_URL}" >&2; exit 1; }
     JENKINS_SCHEME="${BASH_REMATCH[1]}"
     JENKINS_HOST="${BASH_REMATCH[2]}"
-    JENKINS_PREFIX="${BASH_REMATCH[3]}"
+    JENKINS_LISTEN_PORT="${BASH_REMATCH[4]}"
+    JENKINS_PREFIX="${BASH_REMATCH[5]}"
+    if [[ -z "$JENKINS_LISTEN_PORT" ]]; then
+        if [[ "$JENKINS_SCHEME" == https ]]; then JENKINS_LISTEN_PORT=443; else JENKINS_LISTEN_PORT=80; fi
+    fi
 }
 
 # For https only: uses the certificate the config names, or — when it
@@ -209,9 +214,9 @@ run_deploy() {
     local key_vars_file="${WORKDIR}/gerrit_ssh_private_key.yml"
     CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 - "$key_vars_file" \
         "$CENTRAL_GERRIT_KEY_FILE" "$TLS_CERT_FILE" "$TLS_KEY_FILE" \
-        "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" <<'PYEOF'
+        "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" "$JENKINS_LISTEN_PORT" <<'PYEOF'
 import os, sys, yaml
-dst, key_file, cert, key, url, scheme, host, prefix = sys.argv[1:9]
+dst, key_file, cert, key, url, scheme, host, prefix, listen_port = sys.argv[1:10]
 yaml.safe_dump({
     'gerrit_ssh_private_key': open(key_file).read(),
     'tls_cert_file': cert,
@@ -221,6 +226,7 @@ yaml.safe_dump({
     'jenkins_scheme': scheme,
     'jenkins_host': host,
     'jenkins_prefix': prefix,
+    'jenkins_listen_port': int(listen_port),
 }, open(dst, 'w'))
 PYEOF
 

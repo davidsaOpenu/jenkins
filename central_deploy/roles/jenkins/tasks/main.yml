@@ -386,9 +386,9 @@
         msg: "Jenkins never came up on :{{ jenkins_http_port }} — see service status/log dumped above."
   tags: configure
 
-# nginx is the only way in from outside: HTTPS on 443 (or plain HTTP on 80
-# when jenkins_url is http://) in front of Jenkins, which listens on
-# localhost only. For https, the certificate is whatever
+# nginx is the only way in from outside: HTTPS (or plain HTTP when
+# jenkins_url is http://) on jenkins_listen_port in front of Jenkins, which
+# listens on localhost only. For https, the certificate is whatever
 # tls_cert_file / tls_key_file resolve to — the config's own, or the
 # self-signed pair deploy_central_jenkins.sh made. The role creates none.
 - name: Install nginx
@@ -429,6 +429,20 @@
     mode: "0644"
   tags: configure
 
+# SELinux only lets nginx bind its standard web ports. A custom
+# jenkins_listen_port needs labelling as http_port_t — -m when another
+# policy already owns it (9090 is websm_port_t on RHEL), -a otherwise.
+- name: Allow nginx to listen on jenkins_listen_port (SELinux)
+  ansible.builtin.shell: >
+    semanage port -m -t http_port_t -p tcp {{ jenkins_listen_port }} 2>/dev/null
+    || semanage port -a -t http_port_t -p tcp {{ jenkins_listen_port }}
+  changed_when: false
+  failed_when: false
+  when:
+    - ansible_selinux is defined and ansible_selinux.status | default('') == "enabled"
+    - jenkins_listen_port | int not in [80, 443]
+  tags: configure
+
 # SELinux stops nginx from opening a connection to Jenkins by default.
 # Skipped where SELinux isn't enabled (Ubuntu uses AppArmor, which doesn't
 # block this). Not fatal either way — the HTTPS check below is the real test.
@@ -450,7 +464,7 @@
 # (jenkins_host), not by the address dialled.
 - name: Check Jenkins answers through nginx
   ansible.builtin.uri:
-    url: "{{ jenkins_scheme }}://127.0.0.1{{ jenkins_prefix }}/login"
+    url: "{{ jenkins_scheme }}://127.0.0.1:{{ jenkins_listen_port }}{{ jenkins_prefix }}/login"
     headers:
       Host: "{{ jenkins_host }}"
     validate_certs: false

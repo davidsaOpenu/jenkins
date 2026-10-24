@@ -24,9 +24,10 @@ CI run means this exact install works.
    - `jenkins_admin_password` — blank generates one, kept in
      `/etc/jenkins-dr/admin_password` (root-only, reused on re-runs).
    - `jenkins_url` — the full address users and agents use, e.g.
-     `https://ci.example.org` or `http://192.114.0.189/jenkins`. `https`
-     serves on port 443, `http` on port 80 (unencrypted — logins and agent
-     secrets travel in clear text); a path becomes Jenkins' URL prefix.
+     `https://ci.example.org` or `https://192.114.0.189:9090/jenkins`.
+     nginx listens on the URL's port — 443 for `https`, 80 for `http` when
+     none is given (`http` is unencrypted: logins and agent secrets travel
+     in clear text); a path becomes Jenkins' URL prefix.
      nginx in front is the only way in — Jenkins itself listens on
      localhost only. Blank means `https://<auto-detected IP>`.
    - `tls_cert_file`, `tls_key_file` — https only: a real certificate and
