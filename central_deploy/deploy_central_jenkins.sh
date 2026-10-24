@@ -142,6 +142,31 @@ resolve_jenkins_url() {
     fi
 }
 
+# Leftovers from an earlier hand-made Jenkins on this machine, checked
+# before anything is installed:
+# - something other than the jenkins systemd service holding
+#   jenkins_http_port (an old Jenkins started by hand, or nginx itself) —
+#   Jenkins would just fail to start;
+# - an nginx location elsewhere still proxying to that port — it would keep
+#   serving the new Jenkins on its old listener, bypassing this HTTPS site.
+#   nginx_jenkins_proxies.py reports them, and removes them with --apply.
+preflight_host() {
+    local pids own_pid pid
+    pids=$(ss -ltnpH "sport = :${JENKINS_HTTP_PORT}" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u)
+    own_pid=$(systemctl show -p MainPID --value jenkins 2>/dev/null || true)
+    for pid in $pids; do
+        [[ "$pid" == "$own_pid" ]] && continue
+        echo "✗ Port ${JENKINS_HTTP_PORT} (jenkins_http_port) is already taken by another process:" >&2
+        ps -o pid=,user=,args= -p "$pid" | cut -c1-200 | sed 's/^/    /' >&2
+        echo "  Stop it (an old Jenkins?) or pick a free jenkins_http_port." >&2
+        exit 1
+    done
+
+    local rc=0
+    python3 "${SCRIPT_DIR}/nginx_jenkins_proxies.py" --port "$JENKINS_HTTP_PORT" || rc=$?
+    [[ "$rc" -eq 0 ]] || exit 1
+}
+
 # For https only: uses the certificate the config names, or — when it
 # names none — a self-signed one for JENKINS_HOST under GENERATED_TLS_DIR.
 # Made once and reused across re-runs while it still matches JENKINS_HOST
@@ -210,6 +235,7 @@ run_deploy() {
     validate_gerrit_account "central" "$CENTRAL_GERRIT_KEY_FILE" "$CENTRAL_GERRIT_USERNAME" "$CENTRAL_CHANGE_ID"
 
     resolve_jenkins_url
+    preflight_host
     ensure_tls_cert
     ensure_admin_password
 

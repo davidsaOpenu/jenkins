@@ -5,6 +5,9 @@ server {
     listen {{ jenkins_listen_port }} ssl;
     ssl_certificate     /etc/nginx/tls/jenkins.crt;
     ssl_certificate_key /etc/nginx/tls/jenkins.key;
+    # Set here, not inherited: a distro/hand-edited nginx.conf may still
+    # allow TLS 1.0/1.1 (Ubuntu 22.04's default does).
+    ssl_protocols TLSv1.2 TLSv1.3;
 {% else %}
     # Plain HTTP (jenkins_url is http://): logins, API tokens and agent
     # secrets cross the network unencrypted.

@@ -47,6 +47,20 @@ CI run means this exact install works.
    also pushes a real patchset and waits for the `jenkins-dr-test` job to
    build it — the same end-to-end check CI runs.
 
+   On a machine that already ran a hand-made Jenkins, the script first
+   checks for leftovers and stops if it finds any:
+   - another process on `jenkins_http_port` (e.g. an old Jenkins) — stop it;
+   - an nginx `location` elsewhere (e.g. in `/etc/nginx/nginx.conf`) still
+     proxying to that port — it would keep serving the new Jenkins over
+     plain HTTP. Remove just those blocks (other apps' locations are kept;
+     every changed file is backed up and `nginx -t`-checked, restored on
+     failure):
+
+         sudo ./central_deploy/nginx_jenkins_proxies.py --port <jenkins_http_port> --apply
+
+   Also move an old `/var/lib/jenkins` aside first (e.g. one created by a
+   Jenkins run as root) — the new Jenkins runs as the `jenkins` user.
+
 5. Once it succeeds, onboard your students — see `central_deploy/SETUP_STUDENTS.md`.
 
 Keep `gerrit_central.yml` private — it holds a real password and is gitignored.
