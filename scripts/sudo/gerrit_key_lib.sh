@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # gerrit_key_lib.sh
 #
@@ -61,14 +61,25 @@ json_field() {
     | grep -oE '[0-9]+$' | head -n1
 }
 
+# Prints a curl config line carrying "user:token", for `curl -K -` on
+# stdin. Never pass credentials as `curl -u`: argv is world-readable in
+# /proc/<pid>/cmdline (jenkins included) until curl gets around to
+# blanking it. printf is a builtin, so the token never hits any argv.
+curl_auth_config() {
+  local creds="$1:$2"
+  creds="${creds//\\/\\\\}"
+  creds="${creds//\"/\\\"}"
+  printf 'user = "%s"\n' "${creds}"
+}
+
 register_ssh_key() {
   local gerrit_user="$1" token="$2" pubkey_file="$3" resp_file="$4"
   local http_code
-  http_code=$(curl -sS -o "${resp_file}" -w '%{http_code}' \
-    -u "${gerrit_user}:${token}" \
+  http_code=$(curl -sS -K - -o "${resp_file}" -w '%{http_code}' \
     -H "Content-Type: text/plain" \
     --data-binary "@${pubkey_file}" \
-    "${GERRIT_API_BASE}/accounts/self/sshkeys")
+    "${GERRIT_API_BASE}/accounts/self/sshkeys" \
+    < <(curl_auth_config "${gerrit_user}" "${token}"))
 
   if [[ "${http_code}" != "200" && "${http_code}" != "201" ]]; then
     echo "ERROR: failed to register SSH key for ${gerrit_user} (HTTP ${http_code})" >&2
@@ -81,9 +92,9 @@ deregister_ssh_key() {
   local gerrit_user="$1" token="$2" seq="$3"
   [[ -z "${seq}" ]] && return 0
   local http_code
-  http_code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE \
-    -u "${gerrit_user}:${token}" \
-    "${GERRIT_API_BASE}/accounts/self/sshkeys/${seq}")
+  http_code=$(curl -sS -K - -o /dev/null -w '%{http_code}' -X DELETE \
+    "${GERRIT_API_BASE}/accounts/self/sshkeys/${seq}" \
+    < <(curl_auth_config "${gerrit_user}" "${token}"))
   if [[ "${http_code}" != "204" && "${http_code}" != "200" ]]; then
     echo "WARNING: failed to deregister SSH key seq=${seq} for ${gerrit_user} (HTTP ${http_code})" >&2
   else

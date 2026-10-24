@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # deploy_gerrit_multi_user_push.sh
 #
@@ -22,7 +22,8 @@
 #      root-run, sudo-allowed binary. Run this from a fresh clone owned by
 #      you or root, never from a Jenkins workspace, and diff the printed
 #      checksums against the reviewed commit before continuing.
-#   2. Creates /opt/ci/secrets (root:root, 0700) and /opt/ci/state
+#   2. Forces /opt/ci to root:root 0755 (and refuses if jenkins can write
+#      it or any parent), then creates /opt/ci/secrets and /opt/ci/state
 #      (root:root, 0700).
 #   3. Installs all 5 scripts to /opt/ci/ (root:root, 0700).
 #   4. Creates /opt/ci/secrets/gerrit_tokens.env from a template and
@@ -83,25 +84,30 @@ if [[ ! -f "${USERS_SOURCE}" ]]; then
   exit 1
 fi
 
-# Refuse any source jenkins could tamper with: the file itself, or any
-# directory on its path (write access to a directory = can rename/replace
-# the entry). Resolved with realpath so a symlink can't hide the real
-# location.
-if id jenkins &>/dev/null; then
-  for src in "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}"; do
-    path="$(realpath -e "${src}")"
-    while :; do
-      if runuser -u jenkins -- test -w "${path}"; then
-        echo "ERROR: ${path} is writable by jenkins — refusing to install" >&2
-        echo "       ${src} as a root-run script. Deploy from a clone jenkins" >&2
-        echo "       can't modify (owned by you or root, not a workspace)." >&2
-        exit 1
-      fi
-      [[ "${path}" == "/" ]] && break
-      path="$(dirname "${path}")"
-    done
+# Exits if jenkins can write $1 or any directory above it (write access
+# to a directory = can rename/replace the entry). Resolved with realpath
+# so a symlink can't hide the real location.
+refuse_if_jenkins_writable() {
+  id jenkins &>/dev/null || return 0
+  local path
+  path="$(realpath -e "$1")"
+  while :; do
+    if runuser -u jenkins -- test -w "${path}"; then
+      echo "ERROR: ${path} is writable by jenkins — refusing to continue:" >&2
+      echo "       jenkins could swap $1, which root runs via sudo." >&2
+      echo "       Deploy from a clone jenkins can't modify (owned by you or" >&2
+      echo "       root, not a workspace), and keep ${INSTALL_DIR}'s parents root-owned." >&2
+      exit 1
+    fi
+    [[ "${path}" == "/" ]] && break
+    path="$(dirname "${path}")"
   done
-fi
+}
+
+# Refuse any source jenkins could tamper with before root installs it.
+for src in "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}"; do
+  refuse_if_jenkins_writable "${src}"
+done
 
 echo "==> Deploying from: ${SCRIPT_DIR}"
 # Deliberately no git calls here: git run as root in a non-root-owned
@@ -113,6 +119,14 @@ sha256sum "${LOCAL_SCRIPTS[@]/#/${SCRIPT_DIR}/}" "${USERS_SOURCE}" | sed 's/^/  
 # ---------------------------------------------------------------------------
 # 2 & 3. Create dirs + install all scripts
 # ---------------------------------------------------------------------------
+# sudo authorizes by path only, never by ownership — if jenkins could
+# write INSTALL_DIR (or a parent), it could replace a sudo-allowed script.
+mkdir -p "${INSTALL_DIR}"
+chown root:root "${INSTALL_DIR}"
+chmod 755 "${INSTALL_DIR}"
+refuse_if_jenkins_writable "${INSTALL_DIR}"
+echo "==> Install dir ready: ${INSTALL_DIR} (root:root, 755)"
+
 mkdir -p "${SECRETS_DIR}"
 chown root:root "${SECRETS_DIR}"
 chmod 700 "${SECRETS_DIR}"
