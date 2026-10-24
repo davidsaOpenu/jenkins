@@ -22,16 +22,21 @@ Jenkinsfiles.
 - **Ubuntu 22.04** (apt) or **CentOS Stream 9 / RHEL / Rocky** (dnf), and
   `sudo`. The script installs everything else.
 - A **GerritHub service account** for Jenkins (e.g. `jenkins-osw`) you can
-  log in to. Not a personal account: its SSH key ends up in Jenkins, and it
-  is also the Jenkins admin login.
-- If the machine sits behind a cloud/network firewall, allow the port in
-  `jenkins_url` there (443 for `https://…` with no port). The script only
-  opens the machine's own firewall.
+  log in to, and its **HTTP password** (GerritHub → Settings → HTTP
+  Credentials — not the login password). Not a personal account: its SSH
+  key ends up in Jenkins, and it is also the Jenkins admin login.
+- **Know which port reaches this machine from outside.** The address
+  people use (e.g. `192.114.0.189`) may not be on the machine at all — a
+  router/NAT in front forwards only some ports to it. Compare
+  `hostname -I` with that address; if it isn't listed, ask which public
+  ports are forwarded here, or test them (`curl -skI https://<address>:<port>/`
+  from outside). `jenkins_url`'s port must be one that arrives. The script
+  only opens the machine's own firewall, never a router or cloud firewall.
 
 ## 1. Get the code
 
 Clone fresh, as your own user — not inside a Jenkins workspace or any
-directory the `jenkins` user can write (the script runs as root):
+directory the `jenkins` user can write (the scripts run as root):
 
     git clone <repo-url> jenkins && cd jenkins
 
@@ -46,17 +51,17 @@ Gitignored — never commit it. Fields:
 |---|---|---|
 | `gerrit_username` | **yes** | The GerritHub service account (also the Jenkins admin login). |
 | `ssh_key_name` | **yes** | File name of its private key in `/root/.ssh/`. Created if missing. |
-| `gerrit_http_password` | **yes** | `gerrit_username`'s GerritHub **HTTP password** (Settings → HTTP Credentials — not the login password). Used only to register the key on the account when GerritHub doesn't accept it yet; never reaches Jenkins. A full account credential — keep the file `chmod 600`. Not needed only if the key is already registered (CI's case). |
-| `jenkins_url` | no | The address users and agents open, e.g. `https://192.114.0.189/jenkins`. nginx listens on its port (443 for `https`, 80 for `http`, unless the URL names one); a path becomes Jenkins' URL prefix. Blank = `https://<auto-detected IP>`. `http` sends passwords and agent secrets unencrypted. |
+| `gerrit_http_password` | **yes** | The account's GerritHub HTTP password. Used only to register the key on the account when GerritHub doesn't accept it yet; never reaches Jenkins. A full account credential — keep the file `chmod 600`. Not needed only if the key is already registered (CI's case). |
+| `jenkins_url` | no | The address users and agents open. nginx listens on its port (443 for `https`, 80 for `http`, unless the URL names one); a path becomes Jenkins' URL prefix. E.g. `https://ci.example.org`, `https://192.114.0.189:8080/jenkins`. Blank = `https://<auto-detected IP>`. `http` sends passwords and agent secrets unencrypted. |
 | `jenkins_internal_port` | no | Jenkins' own port on 127.0.0.1 behind nginx, never reachable from outside. Default 8080 — change it only if 8080 is taken on this machine. |
-| `nginx_shared_server` | no | `true`: attach Jenkins to the nginx server **already** listening on `jenkins_url`'s port (shared with other apps — e.g. the only port a NAT in front of the machine forwards) instead of giving it its own. That server's `listen` gets `ssl` (for `https`) and two `include` lines; nothing else changes (backed up, `nginx -t`-checked). Plain `http://` sent there is redirected to `https://`. Default `false`. |
+| `nginx_shared_server` | no | `true`: attach Jenkins to the nginx server **already** listening on `jenkins_url`'s port (shared with other apps — e.g. the only port a NAT forwards here) instead of giving it its own. That server's `listen` gets `ssl` (for `https`) and two `include` lines; nothing else changes (backed up, `nginx -t`-checked). Plain `http://` arriving there is redirected to `https://`. Default `false`. |
 | `jenkins_admin_password` | no | Blank: generated once into `/etc/jenkins-dr/admin_password` (root-only) and reused on re-runs. |
-| `tls_cert_file`, `tls_key_file` | no | `https` only: a real certificate and key, both or neither. Blank: a self-signed pair for `jenkins_url`'s host is created at `/etc/jenkins-dr/tls/`. |
+| `tls_cert_file`, `tls_key_file` | no | `https` only: a real certificate and key, both or neither. Blank: a self-signed pair for `jenkins_url`'s host is created at `/etc/jenkins-dr/tls/` (see "Browser says Not secure"). |
 | `email`, `display_name`, `change_id` | no | All three or none. Only for the end-to-end push test (CI sets them). |
 
-Example — HTTPS under `/jenkins`, on a machine behind a NAT that only
-forwards port 8080, where an existing nginx server on 8080 also serves
-other apps:
+Example — the CSlab server: public address `192.114.0.189`, the router
+forwards only ports 80 and 8080 (both to this machine's 8080), and an
+existing nginx server on 8080 also serves OpenProject:
 
 ```yaml
 gerrit_username: "jenkins-osw"
@@ -67,25 +72,27 @@ jenkins_internal_port: 9090      # 8080 is nginx's
 nginx_shared_server: true        # attach to the existing 8080 server
 ```
 
+On a plain machine where 443 is reachable, `gerrit_username`,
+`ssh_key_name`, `gerrit_http_password` and `jenkins_url:
+"https://<address>/jenkins"` are enough.
+
 ## 3. Run it
 
-On a fresh machine:
-
-    sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml
-
-On a machine that already runs (or ran) a hand-made Jenkins, add
-`--replace-old-jenkins` — see below:
-
-    sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml --replace-old-jenkins
-
-To also recreate the real CI jobs — one per `jobs/<name>/Jenkinsfile` in
-this repo — add `--with-repo-jobs` (see "Jobs" below). This is the full
-disaster-recovery command:
+The full disaster-recovery command — replaces an earlier hand-made Jenkins
+if there is one, installs, and recreates the jobs from this repo:
 
     sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml --replace-old-jenkins --with-repo-jobs
 
-It never prompts, so it can run unattended. Takes several minutes on a fresh machine. Safe to re-run any time — to
-reapply config, after fixing a problem, or to recover.
+Both flags are optional:
+- `--replace-old-jenkins` — only needed on a machine that runs (or ran) a
+  hand-made Jenkins; harmless otherwise. Without it, leftovers make the
+  install stop with a message.
+- `--with-repo-jobs` — creates the real CI jobs (see "Jobs"). Without it
+  you get Jenkins with just the `jenkins-dr-test` job.
+
+It never prompts, so it can run unattended. Takes several minutes on a
+fresh machine. Safe to re-run any time — to reapply config, after fixing a
+problem, or to recover.
 
 ### What it does
 
@@ -93,8 +100,8 @@ reapply config, after fixing a problem, or to recover.
 2. Creates `/root/.ssh/<ssh_key_name>` if missing, and makes sure GerritHub
    accepts it as `gerrit_username` — registering it with
    `gerrit_http_password` if not.
-3. With `--replace-old-jenkins` only — it stops processes and moves data,
-   so it never happens implicitly. Retires an earlier hand-made Jenkins:
+3. With `--replace-old-jenkins` only (it stops processes and moves data,
+   so it never happens implicitly), retires an earlier hand-made Jenkins:
    - stops whatever else listens on `jenkins_internal_port` (and a
      `daemon` supervisor around it);
    - disables a distro `jenkins` service that isn't this install's;
@@ -103,28 +110,60 @@ reapply config, after fixing a problem, or to recover.
    - removes nginx `location` blocks elsewhere (e.g. in
      `/etc/nginx/nginx.conf`) still proxying to that port, which would
      otherwise keep serving the new Jenkins over plain HTTP. Only those
-     blocks go — other apps' locations and comments stay; each changed file
-     is backed up and `nginx -t`-checked, all restored if it fails.
+     blocks go — other apps' locations and comments stay.
 
    Anything this install created carries a marker and is never touched,
-   so re-running with the flag is safe. Without the flag, leftovers make
-   the install stop with a message instead.
+   so re-running with the flag is safe.
 4. Opens `jenkins_url`'s port in ufw or firewalld, if one is active.
-5. Runs `deploy_central_jenkins.sh`: creates the self-signed certificate
-   and/or admin password if needed; installs Java 21, Jenkins (systemd
-   service, user `jenkins`, bound to 127.0.0.1) with its plugins and JCasC
-   config, and nginx in front; then waits until the Gerrit Trigger plugin
+5. Runs `deploy_central_jenkins.sh`: checks `jenkins_url`'s port against
+   existing nginx servers; creates the self-signed certificate and/or
+   admin password if needed; installs Java 21, Jenkins (systemd service,
+   user `jenkins`, bound to 127.0.0.1) with its plugins and JCasC config,
+   and nginx in front (its own server, or attached with
+   `nginx_shared_server`); then waits until the Gerrit Trigger plugin
    reports it is **connected to GerritHub** — only then prints success.
    With `email`/`display_name`/`change_id` set it also pushes a real
    patchset and waits for the `jenkins-dr-test` job to build it.
 6. With `--with-repo-jobs` only: runs `create_repo_jobs.sh` — see "Jobs".
+
+Every nginx file it edits is backed up first (`<file>.bak-<timestamp>`),
+checked with `nginx -t`, and restored if the check fails.
+
+## 4. After it succeeds
+
+    sudo cat /etc/jenkins-dr/admin_password     # only if jenkins_admin_password was blank
+
+Open `jenkins_url` exactly as configured — **including its port** (e.g.
+`https://192.114.0.189:8080/jenkins`; `https://192.114.0.189/jenkins`
+without the port means 443) — and log in as `gerrit_username`. Then
+onboard students — see `central_deploy/SETUP_STUDENTS.md`. Their agents
+need a copy of `/etc/jenkins-dr/tls/jenkins-dr.crt` as `central_ca_cert`
+when the certificate is self-signed.
+
+### Browser says "Not secure" (https crossed out)
+
+That's the self-signed certificate: the connection **is** encrypted, but
+the browser doesn't know who issued it. Either:
+
+- **Trust it on each computer** that opens Jenkins. Copy
+  `/etc/jenkins-dr/tls/jenkins-dr.crt` off the server, check its
+  fingerprint matches
+  `sudo openssl x509 -in /etc/jenkins-dr/tls/jenkins-dr.crt -noout -fingerprint -sha256`,
+  then import it — Windows: double-click → Install Certificate → Local
+  Machine → Trusted Root Certification Authorities; macOS: Keychain Access
+  → Always Trust; Ubuntu Chrome: Settings → Privacy and security →
+  Security → Manage certificates → Authorities → Import. Restart the
+  browser.
+- **Or use a real certificate**: these are issued for a DNS name, not a
+  bare IP — get a name (and a certificate, e.g. from IT or Let's Encrypt)
+  for the machine, set `tls_cert_file`/`tls_key_file`, re-run.
 
 ## Jobs (`--with-repo-jobs`)
 
 `central_deploy/create_repo_jobs.sh` creates one pipeline job per
 `jobs/<name>/Jenkinsfile` (named `<name>`; `jenkins-dr-test` is left to the
 JCasC config). It is the disaster-recovery path only — CI's `run.sh` never
-runs it. It can also be run on its own after a deploy:
+runs it. It can also be run on its own on a deployed Jenkins:
 
     sudo ./central_deploy/create_repo_jobs.sh central_deploy/gerrit_central.yml
 
@@ -142,27 +181,25 @@ runs it. It can also be run on its own after a deploy:
   triggers registered, are left alone.
 
 What the jobs need from the machine — they run on the built-in node as the
-`jenkins` user, as before: the tools their Jenkinsfiles call (e.g. docker,
+`jenkins` user: the tools their Jenkinsfiles call (e.g. docker,
 vagrant/libvirt for the VM-based ones) and the matching group memberships
-for `jenkins`. Pipelines that call Jenkins' internal API (e.g.
-`periodic-tasks`) need their methods approved once in Manage Jenkins →
-In-process Script Approval after their first real run.
+for `jenkins` (see `SECURITY_NOTES.md` for what those memberships imply).
+Pipelines that call Jenkins' internal API (e.g. `periodic-tasks`) need
+their methods approved once in Manage Jenkins → In-process Script Approval
+after their first real run.
 
-## 4. After it succeeds
+## Updating later
 
-    sudo cat /etc/jenkins-dr/admin_password     # only if jenkins_admin_password was blank
-
-Open `jenkins_url` and log in as `gerrit_username` with that password.
-With a self-signed certificate the browser warns once; students' agents
-need a copy of `/etc/jenkins-dr/tls/jenkins-dr.crt` as their
-`central_ca_cert`. Then onboard students — see
-`central_deploy/SETUP_STUDENTS.md`.
+Re-run the same `setup_central.sh` command after changing
+`gerrit_central.yml`, pulling new changes to `central_deploy/`, or adding a
+job folder. Jenkinsfile edits need no re-run (jobs read them from
+GerritHub). Re-runs reuse the SSH key, admin password and certificate.
 
 ## Troubleshooting
 
 The scripts stop at the first problem with a `✗` line saying what's wrong:
 
-| Message | Fix |
+| Message / symptom | Fix |
 |---|---|
 | `missing/blank required field(s)` / `must look like` / `was renamed to` | Fix `gerrit_central.yml` as the message says. |
 | `GerritHub doesn't accept … gerrit_http_password is blank` | Fill in `gerrit_http_password` (or add the printed public key to the account by hand), re-run. |
@@ -171,13 +208,30 @@ The scripts stop at the first problem with a `✗` line saying what's wrong:
 | `An existing nginx server already serves apps on port <n>` | Use a free port in `jenkins_url`, or set `nginx_shared_server: true` to attach Jenkins to that server. |
 | `nginx_shared_server: true needs exactly one existing nginx server` | No (or several) nginx servers listen on `jenkins_url`'s port — fix the port, or drop the flag. |
 | `nginx still proxies to Jenkins' port` | Re-run with `--replace-old-jenkins` (or run the printed `nginx_jenkins_proxies.py … --apply`). |
+| Long `FAILED - RETRYING … ansible.builtin.uri` | Jenkins is still starting (it answers "Jenkins is getting ready" meanwhile); the first start can take minutes. If it gives up: `Jenkins never came up` below. |
 | `Jenkins never came up` | Jenkins' own log is printed above it; also `sudo journalctl -u jenkins`. |
 | `Gerrit Trigger never connected` | Manage Jenkins → Gerrit Trigger shows the error; also `sudo journalctl -u jenkins`. |
+| `Can't log in to Jenkins at …` (jobs) | Deploy first, or the admin password in the config/`/etc/jenkins-dr/admin_password` doesn't match. |
+| `… ended before the pipeline started — its Jenkinsfile couldn't be loaded` (jobs) | The printed log says why — usually the repo/branch/`jobs/<name>/Jenkinsfile` isn't reachable or doesn't parse. |
+| `⚠ <job>: no triggers registered` (jobs) | That Jenkinsfile defines no `triggers {}` — fine if intended; otherwise check it. |
+| Works on the machine, not from outside | `jenkins_url`'s port isn't forwarded to this machine (see "Before you start"). Locally: `curl -skI https://127.0.0.1:<port><prefix>/login -H 'Host: <host>'` should give 200. |
+| Browser: "Not secure", https crossed out | Self-signed certificate — see "Browser says Not secure". |
 
 Useful checks: `systemctl status jenkins nginx`, `sudo ss -ltnp`,
-`sudo nginx -t`. Jenkins' nginx pieces are `/etc/nginx/snippets/jenkins-dr-*.conf`,
-included by `/etc/nginx/conf.d/jenkins.conf` (or, with `nginx_shared_server`,
-by the existing server they were attached to).
+`sudo nginx -t`.
+
+## What's where on the machine
+
+| Path | What |
+|---|---|
+| `/var/lib/jenkins` | Jenkins home (jobs, builds, JCasC in `casc_configs/`). An old one moved aside: `/var/lib/jenkins.old-<date>`. |
+| `/etc/systemd/system/jenkins.service` | The Jenkins service (`sudo systemctl restart jenkins`). |
+| `/etc/jenkins-dr/admin_password` | Generated admin password (root-only). |
+| `/etc/jenkins-dr/tls/` | Self-signed certificate and key. |
+| `/root/.ssh/<ssh_key_name>` | The GerritHub SSH key (also copied into Jenkins). |
+| `/etc/nginx/snippets/jenkins-dr-*.conf` | Jenkins' nginx location and TLS settings. |
+| `/etc/nginx/conf.d/jenkins.conf` | Jenkins' own nginx server (not with `nginx_shared_server`). |
+| `/etc/nginx/**.bak-<timestamp>` | Backups of nginx files before each edit — copy one back and `sudo systemctl reload nginx` to undo. |
 
 ## Notes
 
