@@ -412,7 +412,14 @@ print(f'CENTRAL_GERRIT_EMAIL\t{d.get("email") or ""}')
 print(f'CENTRAL_GERRIT_DISPLAY_NAME\t{d.get("display_name") or ""}')
 print(f'CENTRAL_CHANGE_ID\t{d.get("change_id") or ""}')
 print(f'CENTRAL_JENKINS_URL\t{url}')
+shared = d.get('nginx_shared_server', False)
+if shared in (None, ''):
+    shared = False
+if not isinstance(shared, bool):
+    print(f"✗ {path}: nginx_shared_server must be true or false, got {shared!r}", file=sys.stderr)
+    sys.exit(1)
 print(f'CENTRAL_JENKINS_INTERNAL_PORT\t{internal_port}')
+print(f'CENTRAL_NGINX_SHARED_SERVER\t{"true" if shared else "false"}')
 print(f'CENTRAL_TLS_CERT_FILE\t{d.get("tls_cert_file") or ""}')
 print(f'CENTRAL_TLS_KEY_FILE\t{d.get("tls_key_file") or ""}')
 PYEOF

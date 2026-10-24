@@ -435,11 +435,49 @@
   when: jenkins_scheme == "https"
   tags: configure
 
+# Jenkins' nginx pieces as snippets, so the same definition serves both
+# modes: included by the role's own server (default), or attached to an
+# existing server with nginx_shared_server: true.
+- name: Create nginx snippets directory
+  ansible.builtin.file:
+    path: /etc/nginx/snippets
+    state: directory
+    mode: "0755"
+  tags: configure
+
+- name: Deploy nginx snippets for Jenkins
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/etc/nginx/snippets/{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - { src: jenkins_nginx_location.conf.j2, dest: jenkins-dr-location.conf }
+    - { src: jenkins_nginx_tls.conf.j2, dest: jenkins-dr-tls.conf }
+  tags: configure
+
 - name: Deploy nginx site for Jenkins
   ansible.builtin.template:
     src: jenkins_nginx.conf.j2
     dest: /etc/nginx/conf.d/jenkins.conf
     mode: "0644"
+  when: not nginx_shared_server | bool
+  tags: configure
+
+# Shared mode: no server of our own (one left from an earlier standalone
+# deploy would still hold its port) — attach to the existing one instead.
+- name: Remove Jenkins' own nginx site (nginx_shared_server)
+  ansible.builtin.file:
+    path: /etc/nginx/conf.d/jenkins.conf
+    state: absent
+  when: nginx_shared_server | bool
+  tags: configure
+
+- name: Attach Jenkins to the existing nginx server (nginx_shared_server)
+  ansible.builtin.command:
+    argv: "{{ ['python3', playbook_dir ~ '/nginx_shared_server.py', 'attach', '--port', jenkins_listen_port | string] + (['--tls'] if jenkins_scheme == 'https' else []) }}"
+  register: nginx_attach
+  changed_when: "'Attached' in nginx_attach.stdout"
+  when: nginx_shared_server | bool
   tags: configure
 
 # SELinux only lets nginx bind its standard web ports. A custom

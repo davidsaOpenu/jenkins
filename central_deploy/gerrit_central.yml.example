@@ -59,6 +59,13 @@ tls_key_file: ""
 # Set it only if something else on this machine already uses 8080.
 jenkins_internal_port: ""
 
+# true: attach Jenkins to the nginx server that already listens on
+# jenkins_url's port (shared with other apps — e.g. the only port a NAT in
+# front of this machine forwards) instead of giving it its own server. Its
+# `listen` gets `ssl` (for https) and two include lines; nothing else in
+# that file changes. Plain http:// sent there is redirected to https://.
+nginx_shared_server: false
+
 # ---------------------------------------------------------------------------
 # OPTIONAL — end-to-end push test. Set all three, or none.
 # Without them the deploy checks that the Gerrit Trigger plugin is

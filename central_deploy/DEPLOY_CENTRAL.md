@@ -49,19 +49,22 @@ Gitignored — never commit it. Fields:
 | `gerrit_http_password` | **yes** | `gerrit_username`'s GerritHub **HTTP password** (Settings → HTTP Credentials — not the login password). Used only to register the key on the account when GerritHub doesn't accept it yet; never reaches Jenkins. A full account credential — keep the file `chmod 600`. Not needed only if the key is already registered (CI's case). |
 | `jenkins_url` | no | The address users and agents open, e.g. `https://192.114.0.189/jenkins`. nginx listens on its port (443 for `https`, 80 for `http`, unless the URL names one); a path becomes Jenkins' URL prefix. Blank = `https://<auto-detected IP>`. `http` sends passwords and agent secrets unencrypted. |
 | `jenkins_internal_port` | no | Jenkins' own port on 127.0.0.1 behind nginx, never reachable from outside. Default 8080 — change it only if 8080 is taken on this machine. |
+| `nginx_shared_server` | no | `true`: attach Jenkins to the nginx server **already** listening on `jenkins_url`'s port (shared with other apps — e.g. the only port a NAT in front of the machine forwards) instead of giving it its own. That server's `listen` gets `ssl` (for `https`) and two `include` lines; nothing else changes (backed up, `nginx -t`-checked). Plain `http://` sent there is redirected to `https://`. Default `false`. |
 | `jenkins_admin_password` | no | Blank: generated once into `/etc/jenkins-dr/admin_password` (root-only) and reused on re-runs. |
 | `tls_cert_file`, `tls_key_file` | no | `https` only: a real certificate and key, both or neither. Blank: a self-signed pair for `jenkins_url`'s host is created at `/etc/jenkins-dr/tls/`. |
 | `email`, `display_name`, `change_id` | no | All three or none. Only for the end-to-end push test (CI sets them). |
 
-Example — HTTPS under `/jenkins`, on a machine where nginx already holds
-8080:
+Example — HTTPS under `/jenkins`, on a machine behind a NAT that only
+forwards port 8080, where an existing nginx server on 8080 also serves
+other apps:
 
 ```yaml
 gerrit_username: "jenkins-osw"
 ssh_key_name: "id_jenkins_osw_central"
 gerrit_http_password: "<from GerritHub Settings → HTTP Credentials>"
-jenkins_url: "https://192.114.0.189/jenkins"
-jenkins_internal_port: 9090
+jenkins_url: "https://192.114.0.189:8080/jenkins"
+jenkins_internal_port: 9090      # 8080 is nginx's
+nginx_shared_server: true        # attach to the existing 8080 server
 ```
 
 ## 3. Run it
@@ -129,12 +132,16 @@ The scripts stop at the first problem with a `✗` line saying what's wrong:
 | `GerritHub doesn't accept … gerrit_http_password is blank` | Fill in `gerrit_http_password` (or add the printed public key to the account by hand), re-run. |
 | `Registration failed — is gerrit_http_password …` | Use the HTTP password from GerritHub Settings → HTTP Credentials, not the login password. |
 | `Port <n> (jenkins_internal_port) is already taken` | An old Jenkins (or nginx) holds it: re-run with `--replace-old-jenkins`, or pick another `jenkins_internal_port`. |
+| `An existing nginx server already serves apps on port <n>` | Use a free port in `jenkins_url`, or set `nginx_shared_server: true` to attach Jenkins to that server. |
+| `nginx_shared_server: true needs exactly one existing nginx server` | No (or several) nginx servers listen on `jenkins_url`'s port — fix the port, or drop the flag. |
 | `nginx still proxies to Jenkins' port` | Re-run with `--replace-old-jenkins` (or run the printed `nginx_jenkins_proxies.py … --apply`). |
 | `Jenkins never came up` | Jenkins' own log is printed above it; also `sudo journalctl -u jenkins`. |
 | `Gerrit Trigger never connected` | Manage Jenkins → Gerrit Trigger shows the error; also `sudo journalctl -u jenkins`. |
 
 Useful checks: `systemctl status jenkins nginx`, `sudo ss -ltnp`,
-`sudo nginx -t`. The nginx site is `/etc/nginx/conf.d/jenkins.conf`.
+`sudo nginx -t`. Jenkins' nginx pieces are `/etc/nginx/snippets/jenkins-dr-*.conf`,
+included by `/etc/nginx/conf.d/jenkins.conf` (or, with `nginx_shared_server`,
+by the existing server they were attached to).
 
 ## Notes
 

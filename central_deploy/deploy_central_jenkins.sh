@@ -66,6 +66,18 @@ preflight_host() {
     local rc=0
     python3 "${SCRIPT_DIR}/nginx_jenkins_proxies.py" --port "$JENKINS_INTERNAL_PORT" || rc=$?
     [[ "$rc" -eq 0 ]] || exit 1
+
+    # jenkins_url's port vs. nginx servers already on it: a separate
+    # Jenkins server must not take over other apps' port; shared mode needs
+    # exactly one server to attach to.
+    if [[ -d /etc/nginx ]]; then
+        local mode=standalone
+        [[ "$CENTRAL_NGINX_SHARED_SERVER" == true ]] && mode=shared
+        python3 "${SCRIPT_DIR}/nginx_shared_server.py" check --port "$JENKINS_LISTEN_PORT" --mode "$mode" || exit 1
+    elif [[ "$CENTRAL_NGINX_SHARED_SERVER" == true ]]; then
+        echo "✗ nginx_shared_server: true, but nginx isn't installed — there's no server to attach to" >&2
+        exit 1
+    fi
 }
 
 # For https only: uses the certificate the config names, or — when it
@@ -150,9 +162,9 @@ run_deploy() {
     CENTRAL_JENKINS_ADMIN_PASSWORD="$CENTRAL_JENKINS_ADMIN_PASSWORD" python3 - "$key_vars_file" \
         "$CENTRAL_GERRIT_KEY_FILE" "$TLS_CERT_FILE" "$TLS_KEY_FILE" \
         "$JENKINS_EXT_URL" "$JENKINS_SCHEME" "$JENKINS_HOST" "$JENKINS_PREFIX" "$JENKINS_LISTEN_PORT" \
-        "$JENKINS_INTERNAL_PORT" <<'PYEOF'
+        "$JENKINS_INTERNAL_PORT" "$CENTRAL_NGINX_SHARED_SERVER" <<'PYEOF'
 import os, sys, yaml
-dst, key_file, cert, key, url, scheme, host, prefix, listen_port, internal_port = sys.argv[1:11]
+dst, key_file, cert, key, url, scheme, host, prefix, listen_port, internal_port, shared = sys.argv[1:12]
 yaml.safe_dump({
     'gerrit_ssh_private_key': open(key_file).read(),
     'tls_cert_file': cert,
@@ -164,6 +176,7 @@ yaml.safe_dump({
     'jenkins_prefix': prefix,
     'jenkins_listen_port': int(listen_port),
     'jenkins_internal_port': int(internal_port),
+    'nginx_shared_server': shared == 'true',
 }, open(dst, 'w'))
 PYEOF
 

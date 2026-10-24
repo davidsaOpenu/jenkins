@@ -1,13 +1,11 @@
 # Front door for Jenkins — the only way in from outside; Jenkins itself
 # listens on localhost only (see jenkins.service in tasks/main.yml).
+# Not used with nginx_shared_server: true (the snippets are attached to an
+# existing server instead — see nginx_shared_server.py).
 server {
 {% if jenkins_scheme == "https" %}
     listen {{ jenkins_listen_port }} ssl;
-    ssl_certificate     /etc/nginx/tls/jenkins.crt;
-    ssl_certificate_key /etc/nginx/tls/jenkins.key;
-    # Set here, not inherited: a distro/hand-edited nginx.conf may still
-    # allow TLS 1.0/1.1 (Ubuntu 22.04's default does).
-    ssl_protocols TLSv1.2 TLSv1.3;
+    include /etc/nginx/snippets/jenkins-dr-tls.conf;
 {% else %}
     # Plain HTTP (jenkins_url is http://): logins, API tokens and agent
     # secrets cross the network unencrypted.
@@ -17,22 +15,5 @@ server {
     # default site on the same port.
     server_name {{ jenkins_host }};
 
-{% if jenkins_prefix %}
-    location = {{ jenkins_prefix }} {
-        return 301 {{ jenkins_prefix }}/;
-    }
-
-{% endif %}
-    location {{ jenkins_prefix }}/ {
-        # No URI on proxy_pass: the path goes through unchanged, matching
-        # Jenkins' own --prefix={{ jenkins_prefix or '(none)' }}.
-        proxy_pass http://127.0.0.1:{{ jenkins_internal_port }};
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-Proto {{ jenkins_scheme }};
-        proxy_set_header X-Forwarded-For $remote_addr;
-        # WebSocket — agents connect with -webSocket.
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
+    include /etc/nginx/snippets/jenkins-dr-location.conf;
 }

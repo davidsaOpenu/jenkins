@@ -16,6 +16,10 @@ jenkins_scheme: https
 jenkins_host: 192.168.100.170
 jenkins_prefix: ""
 jenkins_listen_port: 443
+# true: attach Jenkins to the existing nginx server already listening on
+# jenkins_listen_port (shared with other apps) instead of adding its own —
+# see nginx_shared_server.py.
+nginx_shared_server: false
 # Pins jenkins-plugin-manager, used to pre-install plugins before Jenkins'
 # first boot (so JCasC's authorizationStrategy is active from boot one,
 # instead of leaving a window where Jenkins runs unsecured).

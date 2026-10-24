@@ -1,0 +1,11 @@
+# Jenkins' TLS settings — included in its nginx server: the role's own
+# (conf.d/jenkins.conf), or an existing one with nginx_shared_server: true.
+ssl_certificate     /etc/nginx/tls/jenkins.crt;
+ssl_certificate_key /etc/nginx/tls/jenkins.key;
+# Set here, not inherited: a distro/hand-edited nginx.conf may still allow
+# TLS 1.0/1.1 (Ubuntu 22.04's default does).
+ssl_protocols TLSv1.2 TLSv1.3;
+# Plain HTTP sent to this TLS port (nginx's code 497) — e.g. an old
+# http://… link, or a router forwarding port 80 here — is redirected to the
+# same address over https instead of failing.
+error_page 497 =301 https://$host:$server_port$request_uri;

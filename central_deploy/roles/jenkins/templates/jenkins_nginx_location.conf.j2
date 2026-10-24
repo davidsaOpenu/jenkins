@@ -1,0 +1,20 @@
+# Jenkins' location — included in its nginx server: the role's own
+# (conf.d/jenkins.conf), or an existing one with nginx_shared_server: true.
+{% if jenkins_prefix %}
+location = {{ jenkins_prefix }} {
+    return 301 {{ jenkins_prefix }}/;
+}
+
+{% endif %}
+location {{ jenkins_prefix }}/ {
+    # No URI on proxy_pass: the path goes through unchanged, matching
+    # Jenkins' own --prefix={{ jenkins_prefix or '(none)' }}.
+    proxy_pass http://127.0.0.1:{{ jenkins_internal_port }};
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto {{ jenkins_scheme }};
+    proxy_set_header X-Forwarded-For $remote_addr;
+    # WebSocket — agents connect with -webSocket.
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
