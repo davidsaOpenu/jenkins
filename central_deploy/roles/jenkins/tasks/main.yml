@@ -16,19 +16,47 @@
     path: /etc/dnf/dnf.conf
     line: "ip_resolve=4"
     insertafter: "^\\[main\\]"
+  when: ansible_pkg_mgr == "dnf"
   tags: always
 
+# apt's equivalent of the dnf line above.
+- name: Force apt to resolve IPv4 only (belt-and-braces, guest has no IPv6 route)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99force-ipv4
+    content: "Acquire::ForceIPv4 \"true\";\n"
+    mode: "0644"
+  when: ansible_os_family == "Debian"
+  tags: always
+
+# dnf refreshes its metadata on its own; apt needs an explicit update
+# before the first install on a fresh machine.
+- name: Refresh apt package index
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  register: apt_update
+  until: apt_update is succeeded
+  retries: 3
+  delay: 10
+  when: ansible_os_family == "Debian"
+  tags: install
+
 - name: Install Java 21
-  ansible.builtin.dnf:
-    name: java-21-openjdk
+  ansible.builtin.package:
+    name: "{{ java21_package[ansible_os_family] }}"
     state: present
+  register: install_java
+  until: install_java is succeeded
+  retries: 3
+  delay: 10
   tags: install
 
 - name: Find Java 21 home
-  # java-21-openjdk-headless's postinstall scriptlet already registers the
-  # real path via `alternatives --install` — read it back and strip
-  # /bin/java. pipefail so a grep miss fails loudly, not silently empty.
-  ansible.builtin.shell: "set -o pipefail; alternatives --display java | grep -E '^/.*java-21-openjdk.*/bin/java - ' | awk '{print $1}' | sed 's#/bin/java$##'"
+  # The Java 21 package's postinstall already registers the real path with
+  # the alternatives system (`alternatives` on RedHat, `update-alternatives`
+  # on Debian — same --display output) — read it back and strip /bin/java.
+  # pipefail so a grep miss fails loudly, not silently empty.
+  ansible.builtin.shell: "set -o pipefail; {{ 'update-alternatives' if ansible_os_family == 'Debian' else 'alternatives' }} --display java | grep -E '^/.*java-21-openjdk.*/bin/java - ' | awk '{print $1}' | sed 's#/bin/java$##'"
   args:
     executable: /bin/bash
   register: java21_home
@@ -54,11 +82,11 @@
   until: install_epel is succeeded
   retries: 3
   delay: 10
-  when: ansible_distribution != "Fedora"
+  when: ansible_os_family == "RedHat" and ansible_distribution != "Fedora"
   tags: install
 
 - name: Install Ansible
-  ansible.builtin.dnf:
+  ansible.builtin.package:
     name: ansible
     state: present
   register: install_ansible_pkg
@@ -179,7 +207,7 @@
 - name: Pre-install Jenkins plugins before first start
   ansible.builtin.command:
     cmd: >
-      java -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins-plugin-manager.jar
+      {{ java21_home.stdout }}/bin/java -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins-plugin-manager.jar
       --war {{ jenkins_home }}/jenkins.war
       --plugin-file {{ jenkins_home }}/plugins.txt
       --plugin-download-directory {{ jenkins_home }}/plugins
@@ -363,7 +391,7 @@
 # tls_cert_file / tls_key_file resolve to — the config's own, or the
 # self-signed pair deploy_central_jenkins.sh made. The role creates none.
 - name: Install nginx
-  ansible.builtin.dnf:
+  ansible.builtin.package:
     name: nginx
     state: present
   register: install_nginx
@@ -399,11 +427,13 @@
   tags: configure
 
 # SELinux stops nginx from opening a connection to Jenkins by default.
-# Not fatal where SELinux is off — the HTTPS check below is the real test.
+# Skipped where SELinux isn't enabled (Ubuntu uses AppArmor, which doesn't
+# block this). Not fatal either way — the HTTPS check below is the real test.
 - name: Allow nginx to connect to Jenkins (SELinux)
   ansible.builtin.command: setsebool -P httpd_can_network_connect 1
   changed_when: false
   failed_when: false
+  when: ansible_selinux is defined and ansible_selinux.status | default('') == "enabled"
   tags: configure
 
 - name: Enable and (re)start nginx

@@ -34,24 +34,56 @@ require_root() {
 
 # A disaster-recovery script can't assume the target machine has anything
 # beyond a base OS — install whatever's missing rather than failing.
+# Supported: dnf (CentOS Stream / RHEL / Rocky / Fedora) and apt (Ubuntu
+# 22.04). The Ansible role handles the same two.
 install_prereqs() {
-    declare -A pkg_for_cmd=( [ansible-playbook]=ansible [python3]=python3 [curl]=curl [git]=git )
+    local pm
+    if command -v dnf >/dev/null 2>&1; then
+        pm=dnf
+    elif command -v apt-get >/dev/null 2>&1; then
+        pm=apt
+    else
+        echo "✗ Unsupported OS: needs dnf (CentOS/RHEL/Fedora) or apt (Ubuntu)" >&2
+        exit 1
+    fi
+
+    # Command -> package; only the YAML module's package name differs.
+    declare -A pkg_for_cmd=( [ansible-playbook]=ansible [python3]=python3 [curl]=curl [git]=git [openssl]=openssl )
     local missing_pkgs=()
     local cmd
-    for cmd in ansible-playbook python3 curl git; do
+    for cmd in ansible-playbook python3 curl git openssl; do
         command -v "$cmd" >/dev/null 2>&1 || missing_pkgs+=("${pkg_for_cmd[$cmd]}")
     done
+    # deploy_verify.sh parses the config with python3's yaml module.
+    if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        if [[ "$pm" == dnf ]]; then missing_pkgs+=(python3-pyyaml); else missing_pkgs+=(python3-yaml); fi
+    fi
+
     if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
-        # ansible isn't in CentOS Stream's base/AppStream repos — needs
-        # EPEL first. Not needed on Fedora, already in its base repos.
-        if [[ "${missing_pkgs[*]}" =~ (^|[[:space:]])ansible($|[[:space:]]) ]] \
-            && [[ "$(. /etc/os-release && echo "$ID")" != "fedora" ]] \
-            && ! dnf list installed epel-release >/dev/null 2>&1; then
-            echo "→ Installing EPEL (required for the ansible package)..."
-            dnf install -y epel-release
-        fi
         echo "→ Installing missing prerequisites: ${missing_pkgs[*]}..."
-        dnf install -y "${missing_pkgs[@]}"
+        if [[ "$pm" == dnf ]]; then
+            # ansible isn't in CentOS Stream's base/AppStream repos — needs
+            # EPEL first. Not needed on Fedora, already in its base repos.
+            if [[ "${missing_pkgs[*]}" =~ (^|[[:space:]])ansible($|[[:space:]]) ]] \
+                && [[ "$(. /etc/os-release && echo "$ID")" != "fedora" ]] \
+                && ! dnf list installed epel-release >/dev/null 2>&1; then
+                echo "→ Installing EPEL (required for the ansible package)..."
+                dnf install -y epel-release
+            fi
+            dnf install -y "${missing_pkgs[@]}"
+        else
+            DEBIAN_FRONTEND=noninteractive apt-get update -q
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -q "${missing_pkgs[@]}"
+        fi
+    fi
+
+    # The distro `ansible` packages bundle community.general (the role's
+    # alternatives module); a bare ansible-core install doesn't. Catch that
+    # here with a fix, not mid-playbook.
+    if ! ansible-doc -t module community.general.alternatives >/dev/null 2>&1; then
+        echo "✗ Ansible collection community.general is missing (ansible-core alone doesn't ship it)." >&2
+        echo "  Install it: ansible-galaxy collection install community.general" >&2
+        exit 1
     fi
 }
 

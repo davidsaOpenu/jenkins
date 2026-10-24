@@ -1,0 +1,7 @@
+---
+# Package names per OS family (ansible_os_family). ansible.builtin.package
+# picks apt or dnf by itself, but not the name. Supported: RedHat (CentOS
+# Stream / RHEL / Rocky / Fedora, dnf) and Debian (Ubuntu 22.04, apt).
+java21_package:
+  RedHat: java-21-openjdk
+  Debian: openjdk-21-jre-headless

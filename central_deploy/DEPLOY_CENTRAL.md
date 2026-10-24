@@ -40,3 +40,13 @@ CI run means this exact install works.
 
 Keep `gerrit_central.yml` private — it holds a real password and is gitignored.
 Safe to re-run any time to reapply config or recover after a failure.
+
+## Supported systems
+
+- **CentOS Stream 9 / RHEL / Rocky** (dnf) — EPEL is added automatically.
+- **Ubuntu 22.04** (apt).
+
+The script installs its own prerequisites (Ansible, Python YAML, curl, git,
+openssl) with whichever of the two the machine has, then the Ansible role
+installs Java 21, Jenkins and nginx the same way. Anything else (no dnf or
+apt) is refused up front.
