@@ -181,7 +181,8 @@ def main():
         print(f"✗ nginx still proxies to Jenkins' port {args.port} outside {OWN_SITE} —"
               f" it would serve the new Jenkins over that listener, bypassing HTTPS.\n"
               f"  Remove those location blocks (other locations are kept):\n"
-              f"    sudo {os.path.abspath(__file__)} --port {args.port} --apply", file=sys.stderr)
+              f"    sudo {os.path.abspath(__file__)} --port {args.port} --apply\n"
+              f"  (setup_central.sh --replace-old-jenkins does this for you.)", file=sys.stderr)
         return 3
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")

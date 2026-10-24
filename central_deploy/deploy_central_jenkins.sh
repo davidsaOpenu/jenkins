@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Installs central Jenkins + the dummy job + Gerrit wiring — the actual
-# disaster-recovery tool. Usage: sudo ./deploy_central_jenkins.sh
+# Installs central Jenkins + the dummy job + Gerrit wiring. Normally run
+# via setup_central.sh (which prepares the machine first); runnable on its
+# own on an already-prepared one. Usage: sudo ./deploy_central_jenkins.sh
 # <path-to-gerrit_central.yml>. Always verifies the Gerrit Trigger plugin
 # is connected to GerritHub; with email/display_name/change_id set (as CI
 # sets them) also verifies end-to-end via a real Gerrit push.
 #
-# The ONE install path: run as-is on a real machine for disaster recovery,
-# and run.sh runs this same script, same command, same config shape inside
-# its jenkins-01 VM for CI. Anything machine-specific belongs in here (or
+# The ONE install path: setup_central.sh -> this script, on a real machine
+# for disaster recovery, and run.sh runs the same command with the same
+# config shape inside its jenkins-01 VM for CI. Anything machine-specific belongs in here (or
 # in the role), never in run.sh — otherwise CI stops testing what DR does.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 source "${REPO_ROOT}/deploy_verify.sh"
+source "${SCRIPT_DIR}/central_lib.sh"
 
 # Broken proxy env — see run_common.sh for why. Strip it.
 unset http_proxy https_proxy ftp_proxy all_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY
@@ -34,61 +36,6 @@ require_root() {
     fi
 }
 
-# A disaster-recovery script can't assume the target machine has anything
-# beyond a base OS — install whatever's missing rather than failing.
-# Supported: dnf (CentOS Stream / RHEL / Rocky / Fedora) and apt (Ubuntu
-# 22.04). The Ansible role handles the same two.
-install_prereqs() {
-    local pm
-    if command -v dnf >/dev/null 2>&1; then
-        pm=dnf
-    elif command -v apt-get >/dev/null 2>&1; then
-        pm=apt
-    else
-        echo "✗ Unsupported OS: needs dnf (CentOS/RHEL/Fedora) or apt (Ubuntu)" >&2
-        exit 1
-    fi
-
-    # Command -> package; only the YAML module's package name differs.
-    declare -A pkg_for_cmd=( [ansible-playbook]=ansible [python3]=python3 [curl]=curl [git]=git [openssl]=openssl )
-    local missing_pkgs=()
-    local cmd
-    for cmd in ansible-playbook python3 curl git openssl; do
-        command -v "$cmd" >/dev/null 2>&1 || missing_pkgs+=("${pkg_for_cmd[$cmd]}")
-    done
-    # deploy_verify.sh parses the config with python3's yaml module.
-    if ! python3 -c 'import yaml' >/dev/null 2>&1; then
-        if [[ "$pm" == dnf ]]; then missing_pkgs+=(python3-pyyaml); else missing_pkgs+=(python3-yaml); fi
-    fi
-
-    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
-        echo "→ Installing missing prerequisites: ${missing_pkgs[*]}..."
-        if [[ "$pm" == dnf ]]; then
-            # ansible isn't in CentOS Stream's base/AppStream repos — needs
-            # EPEL first. Not needed on Fedora, already in its base repos.
-            if [[ "${missing_pkgs[*]}" =~ (^|[[:space:]])ansible($|[[:space:]]) ]] \
-                && [[ "$(. /etc/os-release && echo "$ID")" != "fedora" ]] \
-                && ! dnf list installed epel-release >/dev/null 2>&1; then
-                echo "→ Installing EPEL (required for the ansible package)..."
-                dnf install -y epel-release
-            fi
-            dnf install -y "${missing_pkgs[@]}"
-        else
-            DEBIAN_FRONTEND=noninteractive apt-get update -q
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -q "${missing_pkgs[@]}"
-        fi
-    fi
-
-    # The distro `ansible` packages bundle community.general (the role's
-    # alternatives module); a bare ansible-core install doesn't. Catch that
-    # here with a fix, not mid-playbook.
-    if ! ansible-doc -t module community.general.alternatives >/dev/null 2>&1; then
-        echo "✗ Ansible collection community.general is missing (ansible-core alone doesn't ship it)." >&2
-        echo "  Install it: ansible-galaxy collection install community.general" >&2
-        exit 1
-    fi
-}
-
 # Where a self-signed certificate goes when the config names none.
 # Distro-neutral on purpose (not /etc/pki or /etc/ssl) — same path on every
 # supported OS. run_common.sh fetches the .crt from here for the agent VMs.
@@ -99,49 +46,6 @@ GENERATED_ADMIN_PASSWORD_FILE="/etc/jenkins-dr/admin_password"
 # Must match the gerrit-trigger server name in jenkins.yaml.j2.
 GERRIT_SERVER_NAME="review.gerrithub.io"
 
-detect_public_ip() {
-    local ip
-    ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
-    [[ -z "$ip" ]] && ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-    if [[ -z "$ip" ]]; then
-        echo "✗ Could not auto-detect this machine's IP" >&2
-        exit 1
-    fi
-    echo "$ip"
-}
-
-# Splits jenkins_url (already validated by load_central_account) — or, when
-# blank, https://<auto-detected IP> — into the parts nginx and Jenkins need.
-# Sets JENKINS_EXT_URL (no trailing /), JENKINS_SCHEME, JENKINS_HOST,
-# JENKINS_LISTEN_PORT (nginx's; 443/80 unless the URL names one) and
-# JENKINS_PREFIX ("" or e.g. "/jenkins").
-resolve_jenkins_url() {
-    if [[ -n "$CENTRAL_JENKINS_URL" ]]; then
-        JENKINS_EXT_URL="$CENTRAL_JENKINS_URL"
-        echo "→ Using configured jenkins_url: ${JENKINS_EXT_URL}"
-    else
-        JENKINS_EXT_URL="https://$(detect_public_ip)"
-        echo "→ Auto-detected URL: ${JENKINS_EXT_URL} (set jenkins_url in gerrit_central.yml to override)"
-    fi
-    [[ "$JENKINS_EXT_URL" =~ ^(https?)://([^/:]+)(:([0-9]+))?(/.*)?$ ]] \
-        || { echo "✗ Can't parse jenkins_url ${JENKINS_EXT_URL}" >&2; exit 1; }
-    JENKINS_SCHEME="${BASH_REMATCH[1]}"
-    JENKINS_HOST="${BASH_REMATCH[2]}"
-    JENKINS_LISTEN_PORT="${BASH_REMATCH[4]}"
-    JENKINS_PREFIX="${BASH_REMATCH[5]}"
-    if [[ -z "$JENKINS_LISTEN_PORT" ]]; then
-        if [[ "$JENKINS_SCHEME" == https ]]; then JENKINS_LISTEN_PORT=443; else JENKINS_LISTEN_PORT=80; fi
-    fi
-
-    # Jenkins' own localhost port: the config's jenkins_internal_port, else the
-    # role default. Can't be the port nginx listens on.
-    JENKINS_INTERNAL_PORT="${CENTRAL_JENKINS_INTERNAL_PORT:-$(python3 -c "import yaml; print(yaml.safe_load(open('${REPO_ROOT}/central_deploy/roles/jenkins/defaults/main.yml'))['jenkins_internal_port'])")}"
-    if [[ "$JENKINS_INTERNAL_PORT" == "$JENKINS_LISTEN_PORT" ]]; then
-        echo "✗ jenkins_internal_port ${JENKINS_INTERNAL_PORT} is also the port in jenkins_url — nginx and Jenkins can't share it" >&2
-        exit 1
-    fi
-}
-
 # Leftovers from an earlier hand-made Jenkins on this machine, checked
 # before anything is installed:
 # - something other than the jenkins systemd service holding
@@ -151,14 +55,11 @@ resolve_jenkins_url() {
 #   serving the new Jenkins on its old listener, bypassing this HTTPS site.
 #   nginx_jenkins_proxies.py reports them, and removes them with --apply.
 preflight_host() {
-    local pids own_pid pid
-    pids=$(ss -ltnpH "sport = :${JENKINS_INTERNAL_PORT}" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u)
-    own_pid=$(systemctl show -p MainPID --value jenkins 2>/dev/null || true)
-    for pid in $pids; do
-        [[ "$pid" == "$own_pid" ]] && continue
+    local pid
+    for pid in $(foreign_port_holders); do
         echo "✗ Port ${JENKINS_INTERNAL_PORT} (jenkins_internal_port) is already taken by another process:" >&2
         ps -o pid=,user=,args= -p "$pid" | cut -c1-200 | sed 's/^/    /' >&2
-        echo "  Stop it (an old Jenkins?) or pick a free jenkins_internal_port." >&2
+        echo "  An old Jenkins? setup_central.sh --replace-old-jenkins stops it; or pick a free jenkins_internal_port." >&2
         exit 1
     done
 

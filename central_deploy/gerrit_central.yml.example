@@ -1,6 +1,7 @@
-# Central Jenkins config — used only by deploy_central_jenkins.sh.
+# Central Jenkins config — for central_deploy/setup_central.sh.
 #
-# Fill this in and run: sudo ./central_deploy/deploy_central_jenkins.sh central_deploy/gerrit_central.yml
+# Fill this in and run: sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml
+# (add --replace-old-jenkins on a machine with an earlier hand-made Jenkins)
 # NEVER commit this file once real values are filled in.
 
 # ---------------------------------------------------------------------------
@@ -12,12 +13,11 @@
 # not a personal one). Also the Jenkins admin login.
 gerrit_username: ""
 
-# Filename under /root/.ssh, on the machine that runs
-# deploy_central_jenkins.sh, of the private key registered to that
-# GerritHub account. The key itself must already be there — this only
-# names it. It is copied into Jenkins for the Gerrit Trigger plugin.
-# Generate with: sudo ssh-keygen -t ed25519 -f /root/.ssh/gerrit_jenkins_key -C "jenkins@swiftacular"
-# Register /root/.ssh/gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+# File name, under /root/.ssh on this machine, of the private key for that
+# GerritHub account. It is copied into Jenkins for the Gerrit Trigger
+# plugin. setup_central.sh creates it if missing and, when GerritHub
+# doesn't accept it yet, offers to register it (or shows the public key
+# to add at https://review.gerrithub.io/settings/#SSHKeys).
 ssh_key_name: ""
 
 # ---------------------------------------------------------------------------

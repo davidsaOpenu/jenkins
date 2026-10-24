@@ -173,6 +173,18 @@
   delay: 10
   tags: install
 
+# Tells setup_central.sh --replace-old-jenkins this home is ours (never
+# moved aside), unlike one left by an earlier hand-made Jenkins. Must
+# match MANAGED_HOME_MARKER_FILE in central_lib.sh.
+- name: Mark Jenkins home as managed by central_deploy
+  ansible.builtin.copy:
+    dest: "{{ jenkins_home }}/.central_deploy_managed"
+    content: "Installed by central_deploy/deploy_central_jenkins.sh\n"
+    owner: root
+    group: root
+    mode: "0644"
+  tags: install
+
 - name: Create Jenkins plugins directory
   ansible.builtin.file:
     path: "{{ jenkins_home }}/plugins"
@@ -219,6 +231,7 @@
   ansible.builtin.copy:
     dest: /etc/systemd/system/jenkins.service
     content: |
+      # Managed by central_deploy (roles/jenkins)
       [Unit]
       Description=Jenkins Automation Server
       After=network.target

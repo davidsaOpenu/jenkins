@@ -244,8 +244,11 @@ deploy_central() {
         "${vm_name}:/tmp/${CENTRAL_SSH_KEY_NAME}"
     run_in_vm "$vm_name" "sudo mv /tmp/${CENTRAL_SSH_KEY_NAME} /root/.ssh/${CENTRAL_SSH_KEY_NAME} && sudo chmod 600 /root/.ssh/${CENTRAL_SSH_KEY_NAME}"
 
-    # The exact command DEPLOY_CENTRAL.md gives for a real machine.
-    run_in_vm "$vm_name" "sudo ./central_deploy/deploy_central_jenkins.sh gerrit_central_test.yml"
+    # The exact command DEPLOY_CENTRAL.md gives for a real machine, flag
+    # included: on this fresh VM every --replace-old-jenkins step finds
+    # nothing, but CI still runs them. The key is already in /root/.ssh
+    # and registered (register_central_key.sh), so no prompt is needed.
+    run_in_vm "$vm_name" "sudo ./central_deploy/setup_central.sh gerrit_central_test.yml --replace-old-jenkins"
 
     fetch_central_ca_cert "$vm_name"
 }
