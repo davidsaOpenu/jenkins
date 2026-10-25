@@ -327,6 +327,37 @@ wait_for_agent_online() {
     return 1
 }
 
+# Step: every node — the built-in one (jenkins.yaml.j2) and each named
+# agent (setup_students.sh) — must exist and have exactly 1 executor.
+verify_executor_counts() {
+    title "Verify every node has exactly 1 executor"
+    local computers
+    # -g: without it curl reads the tree=...[...] brackets as a URL glob.
+    computers=$(curl -sfg -u "${ADMIN_USER}:${ADMIN_PASS}" \
+        "${JENKINS_URL}/computer/api/json?tree=computer[_class,displayName,numExecutors]") \
+        || { echo "✗ Could not list Jenkins' nodes" >&2; exit 1; }
+    python3 -c '
+import json, sys
+computers = json.loads(sys.argv[1])["computer"]
+expected = sys.argv[2:]
+bad = []
+for c in computers:
+    builtin = c["_class"].endswith("MasterComputer")
+    name = "built-in" if builtin else c["displayName"]
+    count = c["numExecutors"]
+    print(f"  {name}: {count} executor(s)")
+    if count != 1:
+        bad.append(name)
+names = {c["displayName"] for c in computers}
+missing = [n for n in expected if n not in names]
+if not any(c["_class"].endswith("MasterComputer") for c in computers):
+    missing.append("built-in")
+if bad or missing:
+    sys.exit(f"✗ Not exactly 1 executor: {bad}; missing nodes: {missing}")
+' "$computers" "$@" || exit 1
+    echo "→ All nodes have exactly 1 executor"
+}
+
 # Step: builds a students.yaml-shaped config from node A/B's identities,
 # then runs the real central_deploy/setup_students.sh — not a hand-rolled
 # shortcut. Sets NODEA_NAME/NODEA_SECRET and NODEB_NAME/NODEB_SECRET.

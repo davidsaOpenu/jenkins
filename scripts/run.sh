@@ -51,6 +51,7 @@ main() {
     deploy_agent "node-b" "${WORKDIR}/node_b_secrets.yml"
     wait_for_agent_online "$NODEA_NAME" 24
     wait_for_agent_online "$NODEB_NAME" 24
+    verify_executor_counts "$NODEA_NAME" "$NODEB_NAME"
 
     # Matches the literal jobs/jenkins-dr-test/Jenkinsfile's Dummy stage
     # normalizes env.NODE_NAME (blank on the built-in node) to.

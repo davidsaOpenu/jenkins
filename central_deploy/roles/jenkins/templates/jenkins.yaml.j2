@@ -1,6 +1,8 @@
 jenkins:
   systemMessage: "Swiftacular CI - Configured as Code"
-  numExecutors: 2
+  # One build at a time on the built-in node, same as every student node
+  # (setup_students.sh) — checked by CI's verify_executor_counts.
+  numExecutors: 1
   # Agents connect over the web port with -webSocket (see the agent
   # service unit) — no separate inbound TCP port to open or firewall.
   slaveAgentPort: -1
