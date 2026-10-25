@@ -4,6 +4,28 @@ Deploy (or update) central first — `DEPLOY_CENTRAL.md` — and run this from
 a checkout of the same version, so students never get an older deploy's
 permissions and the name check below applies.
 
+## Before you start: trust central's certificate
+
+Unless `gerrit_central.yml` named a real certificate (`tls_cert_file`),
+the deploy made a self-signed one, and both `setup_students.sh` and
+`reset_students.sh` refuse to talk to Jenkins until you tell them to trust
+it — they then fail with just "cannot log in", even with the right
+password. In every new shell, before running either script:
+
+    export CURL_CA_BUNDLE=/etc/jenkins-dr/tls/jenkins-dr.crt
+
+That file is on the central machine (made by the deploy, readable by
+everyone; its `.key` next to it is not, and never leaves the machine).
+Running the scripts from another machine? Copy the `.crt` there first
+(e.g. `scp central:/etc/jenkins-dr/tls/jenkins-dr.crt .`) and export that
+path instead. Check it works — this must print `200`:
+
+    curl -s -o /dev/null -w '%{http_code}\n' <jenkins_url>/login
+
+Students need this same file (see step 5).
+
+## Adding students
+
 1. Copy the example config:
    cp central_deploy/students.yaml.example central_deploy/students.yaml
 
@@ -20,25 +42,48 @@ permissions and the name check below applies.
    ./setup_students.sh
 
    It asks for the central Jenkins URL, the admin user and the admin
-   password. To skip the questions (or from CI), set `JENKINS_URL`,
-   `JENKINS_ADMIN_USER` and `JENKINS_ADMIN_PASSWORD` in the environment.
-
-   If central uses a self-signed certificate, first run
-   `export CURL_CA_BUNDLE=<path to its .crt>` — and give that file to the
-   students too (their `central_ca_cert`).
+   password. The URL is `jenkins_url` exactly as in `gerrit_central.yml`,
+   port and path included (e.g. `https://192.114.0.189:8080/jenkins`) —
+   it is also what students get as `central_url`. To skip the questions
+   (or from CI), set `JENKINS_URL`, `JENKINS_ADMIN_USER` and
+   `JENKINS_ADMIN_PASSWORD` in the environment.
 
    (Optional custom paths: `./setup_students.sh <config.yaml> <creds_output.yaml>`)
 
 4. Read the output file (`students_credentials.yaml` by default, owner-only)
-   — it has each student's Jenkins password and agent name + secret.
+   — one entry per student, with everything step 5 needs.
 
 5. Send each student, privately and one-to-one (never a group channel),
-   only their own:
-   - Jenkins URL, user (their `name`) and password — to log in, watch
-     builds and approve their own;
-   - `central_url`, `central_agent_name` and `central_agent_secret` — to
-     connect their node (`student_deploy/CONNECT_AGENT.md`);
-   - with a self-signed certificate: a copy of it, as `central_ca_cert`.
+   only their own entry, plus the certificate file:
+
+   | Send | Value (key in their file entry) | Student uses it for |
+   |---|---|---|
+   | Jenkins URL | `central_url` | logging in, in a browser |
+   | Jenkins user | the entry's name | logging in |
+   | Jenkins password | `password` | logging in |
+   | `gerrit_owner_username` | the entry's name | `secrets.yml` |
+   | `central_url` | `central_url` | `secrets.yml` |
+   | `central_agent_name` | `agent_name` (`<name>-vm`) | `secrets.yml` |
+   | `central_agent_secret` | `agent_secret` | `secrets.yml` |
+   | `jenkins-dr.crt` | the file itself, attached | `secrets.yml`'s `central_ca_cert`: the path where they save it |
+
+   Skip the certificate only if central has a real one (`tls_cert_file`).
+   The student follows `student_deploy/CONNECT_AGENT.md` with these. Their
+   machine must reach `central_url` (port included) — check from it with
+   `curl -s -o /dev/null -w '%{http_code}\n' --cacert jenkins-dr.crt <central_url>/login`
+   (must print `200`); the agent connects over that same address, no
+   other port.
+
+   A message, one per student:
+
+       Jenkins: <central_url>   user: <name>   password: <password>
+       Agent (student_deploy/secrets.yml):
+         gerrit_owner_username: "<name>"
+         central_url:          "<central_url>"
+         central_agent_name:   "<name>-vm"
+         central_agent_secret: "<secret>"
+         central_ca_cert:      "<where you saved the attached jenkins-dr.crt>"
+       Then: sudo ./student_deploy/deploy_agent.sh student_deploy/secrets.yml
 
    The agent secret lets anyone connect as that student's node, and
    recreating the node does not change it (Jenkins derives it from the
