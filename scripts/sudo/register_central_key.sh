@@ -126,8 +126,11 @@ fi
 # symlink to /etc, and a root chown/chmod/install would follow it and hand
 # jenkins ownership of the target. Done as jenkins, a symlink only reaches
 # what jenkins could already write. Root opens KEY_PATH for the redirect,
-# so jenkins never needs read access to STATE_DIR.
+# so jenkins never needs read access to STATE_DIR — cat reads that open
+# fd as-is. (Not `install /dev/stdin`: it re-opens the path, and for a
+# regular file Linux re-checks KEY_PATH's permissions as jenkins → EACCES.)
+# chmod after: an existing KEY_DEST keeps its old mode through `>`.
 runuser -u jenkins -- mkdir -p -m 700 "${KEY_DEST_DIR}"
-runuser -u jenkins -- install -m 600 /dev/stdin "${KEY_DEST}" < "${KEY_PATH}"
+runuser -u jenkins -- sh -c 'umask 077 && cat > "$1" && chmod 600 "$1"' sh "${KEY_DEST}" < "${KEY_PATH}"
 
 echo "Central key installed at ${KEY_DEST}, seq=${SEQ} recorded in ${STATE_FILE}."
