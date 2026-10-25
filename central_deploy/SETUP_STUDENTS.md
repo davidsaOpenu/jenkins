@@ -22,7 +22,10 @@ path instead. Check it works — this must print `200`:
 
     curl -s -o /dev/null -w '%{http_code}\n' <jenkins_url>/login
 
-Students need this same file (see step 5).
+Students need this same certificate — `setup_students.sh` embeds it in
+the file each one is sent (step 4), so there's nothing extra to send. On
+the central machine it finds it by itself; elsewhere, also
+`export CENTRAL_CA_CERT=<your copy of jenkins-dr.crt>`.
 
 ## Adding students
 
@@ -50,46 +53,35 @@ Students need this same file (see step 5).
 
    (Optional custom paths: `./setup_students.sh <config.yaml> <creds_output.yaml>`)
 
-4. Read the output file (`students_credentials.yaml` by default, owner-only)
-   — one entry per student, with everything step 5 needs.
+4. It writes two things next to each other (all owner-only, gitignored):
+   - `students_credentials.yaml` — every student, for your records.
+     Never send it: it holds everyone's password and agent secret.
+   - `students_secrets/<name>.secrets.yml` — one per student, ready to
+     use as their `student_deploy/secrets.yml`: their agent settings, the
+     certificate embedded, and their Jenkins login (URL, user, password)
+     as a comment on top. The script lists them at the end.
 
-5. Send each student, privately and one-to-one (never a group channel),
-   only their own entry, plus the certificate file:
+   If it says "No certificate embedded" but central uses the self-signed
+   one, set `CENTRAL_CA_CERT` (see "Before you start") and re-run.
 
-   | Send | Value (key in their file entry) | Student uses it for |
-   |---|---|---|
-   | Jenkins URL | `central_url` | logging in, in a browser |
-   | Jenkins user | the entry's name | logging in |
-   | Jenkins password | `password` | logging in |
-   | `gerrit_owner_username` | the entry's name | `secrets.yml` |
-   | `central_url` | `central_url` | `secrets.yml` |
-   | `central_agent_name` | `agent_name` (`<name>-vm`) | `secrets.yml` |
-   | `central_agent_secret` | `agent_secret` | `secrets.yml` |
-   | `jenkins-dr.crt` | the file itself, attached | `secrets.yml`'s `central_ca_cert`: the path where they save it |
+5. Send each student **their own** `students_secrets/<name>.secrets.yml`
+   — that one file, nothing else — privately and one-to-one (never a
+   group channel). For example:
 
-   Skip the certificate only if central has a real one (`tls_cert_file`).
-   The student follows `student_deploy/CONNECT_AGENT.md` with these. Their
-   machine must reach `central_url` (port included) — check from it with
-   `curl -s -o /dev/null -w '%{http_code}\n' --cacert jenkins-dr.crt <central_url>/login`
-   (must print `200`); the agent connects over that same address, no
-   other port.
+       Attached: your Jenkins agent settings. Save it as
+       student_deploy/secrets.yml in your clone of this repo, then run
+         sudo ./student_deploy/deploy_agent.sh student_deploy/secrets.yml
+       and follow student_deploy/CONNECT_AGENT.md. Your Jenkins login is
+       at the top of the file. Keep the file private.
 
-   A message, one per student:
-
-       Jenkins: <central_url>   user: <name>   password: <password>
-       Agent (student_deploy/secrets.yml):
-         gerrit_owner_username: "<name>"
-         central_url:          "<central_url>"
-         central_agent_name:   "<name>-vm"
-         central_agent_secret: "<secret>"
-         central_ca_cert:      "<where you saved the attached jenkins-dr.crt>"
-       Then: sudo ./student_deploy/deploy_agent.sh student_deploy/secrets.yml
+   Their machine must reach `central_url` (port included): the agent
+   downloads from and connects to that one address, no other port.
 
    The agent secret lets anyone connect as that student's node, and
    recreating the node does not change it (Jenkins derives it from the
    node name). If one leaks, `./reset_students.sh <name>` — with the node
-   gone, the secret connects to nothing. Never share `students.yaml`
-   itself — it holds real passwords and is gitignored.
+   gone, the secret connects to nothing. Never share `students.yaml` or
+   `students_credentials.yaml` — they hold everyone's passwords.
 
 Students can't add nodes themselves: each gets exactly one, `<name>-vm`,
 created here — they only connect their own machine to it.
@@ -119,9 +111,10 @@ never asks for a change on first login, and it never expires. There is no
 
   Then update their entry in `students.yaml` too, or the next full run
   puts the old password back. Their node is re-created with the same
-  agent secret, so their `secrets.yml` keeps working. Both files hold the
-  password: keep the `students_*.yaml` names (gitignored) and delete them
-  afterwards.
+  agent secret, so their `secrets.yml` keeps working — just tell them the
+  new password (their regenerated `students_secrets/<name>.secrets.yml`
+  has it too). Both one-off files hold the password: keep the
+  `students_*.yaml` names (gitignored) and delete them afterwards.
 
 ## What a student can do
 

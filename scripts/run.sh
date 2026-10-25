@@ -42,13 +42,12 @@ main() {
     deploy_central "jenkins-01" "$CENTRAL_VM_SECRETS"
 
     # Step 6: provision node-a and node-b as real students via
-    # setup_students.sh. Sets NODEA_NAME/NODEA_SECRET, NODEB_NAME/NODEB_SECRET.
+    # setup_students.sh. Sets NODEA_NAME/NODEB_NAME and each one's
+    # generated secrets.yml — deployed exactly as a student would.
     provision_test_students
 
-    build_node_secrets "${WORKDIR}/node_a_secrets.yml" "$NODE_A_GERRIT_USERNAME" "$NODEA_NAME" "$NODEA_SECRET"
-    build_node_secrets "${WORKDIR}/node_b_secrets.yml" "$NODE_B_GERRIT_USERNAME" "$NODEB_NAME" "$NODEB_SECRET"
-    deploy_agent "node-a" "${WORKDIR}/node_a_secrets.yml"
-    deploy_agent "node-b" "${WORKDIR}/node_b_secrets.yml"
+    deploy_agent "node-a" "$NODEA_SECRETS_FILE"
+    deploy_agent "node-b" "$NODEB_SECRETS_FILE"
     wait_for_agent_online "$NODEA_NAME" 24
     wait_for_agent_online "$NODEB_NAME" 24
     verify_executor_counts "$NODEA_NAME" "$NODEB_NAME"

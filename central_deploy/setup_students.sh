@@ -200,7 +200,7 @@ provision_all_students() {
 print_credentials() {
     echo ""
     echo "============================================================"
-    echo " Done. Send each student their credentials:"
+    echo " Done. Each student's credentials:"
     echo "============================================================"
     local entry name node project secret password
     for entry in "${RESULTS[@]}"; do
@@ -245,6 +245,22 @@ with os.fdopen(fd, 'w') as f:
     echo "============================================================"
 }
 
+# One ready-to-use student_deploy/secrets.yml per student, next to the
+# credentials file — what each student is actually sent (SETUP_STUDENTS.md
+# step 5). The embedded certificate: CENTRAL_CA_CERT if set (CI, or a copy
+# when running away from central), else the deploy's own self-signed one
+# if this is the central machine, else none (central has a real one).
+write_student_secrets() {
+    local out_dir cert="${CENTRAL_CA_CERT:-}"
+    out_dir="$(dirname "$CREDS_FILE")/students_secrets"
+    [[ -n "$cert" || ! -r "$CENTRAL_SELF_SIGNED_CERT" ]] || cert="$CENTRAL_SELF_SIGNED_CERT"
+    echo " Send each student their own file (save it as student_deploy/secrets.yml):"
+    python3 "${SCRIPT_DIR}/student_secrets.py" "$CREDS_FILE" "$out_dir" ${cert:+"$cert"} | sed 's/^/   /' \
+        || { err "could not write the students' secrets.yml files (see above)"; exit 1; }
+    [[ -n "$cert" ]] || hint " No certificate embedded — fine only if central has a real one. Otherwise set CENTRAL_CA_CERT=<copy of ${CENTRAL_SELF_SIGNED_CERT}> and re-run."
+    echo "============================================================"
+}
+
 main() {
     parse_args "$@"
     load_config
@@ -259,6 +275,7 @@ main() {
     provision_all_students
     print_credentials
     write_creds_file
+    write_student_secrets
 }
 
 main "$@"

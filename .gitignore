@@ -3,6 +3,10 @@ central_deploy/students.yaml
 central_deploy/students_credentials.yaml
 # One-off rosters / their output (SETUP_STUDENTS.md "Passwords") — hold passwords.
 central_deploy/students_*.yaml
+# Each student's generated secrets.yml (student_secrets.py) — login + agent secret.
+central_deploy/students_secrets/
+# A student's own copy of it.
+student_deploy/secrets.yml
 local_test.sh
 .vagrant/
 central_deploy/gerrit_agents.yml

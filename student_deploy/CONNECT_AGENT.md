@@ -1,38 +1,31 @@
 # Connecting your agent to central Jenkins
 
-1. Your instructor sends you (after running `setup_students.sh` for you):
-   - your Jenkins login: URL, user, password;
-   - `central_url` — the same Jenkins URL, port and path included;
-   - `central_agent_name` (e.g. `alice-vm`) and `central_agent_secret`;
-   - usually a certificate file, `jenkins-dr.crt` — save it on the
-     machine that will run your agent.
+1. Your instructor sends you one file, `<name>.secrets.yml`. On the
+   machine that will run your agent, in your clone of this repo, save it
+   as `student_deploy/secrets.yml` — exactly as received, nothing to fill
+   in. It holds your agent's settings, central's certificate, and your
+   Jenkins login (URL, user, password) in the comment at its top.
 
-   Keep the secret and password private: the secret lets anyone connect
-   as your node.
+   Keep it private: its secret lets anyone connect as your node.
 
-   Check that machine reaches central — this must print `200`:
+2. Check that machine reaches central — this must print `200`
+   (`central_url` is in the file):
 
-       curl -s -o /dev/null -w '%{http_code}\n' --cacert jenkins-dr.crt <central_url>/login
+       curl -sk -o /dev/null -w '%{http_code}\n' <central_url>/login
 
-   (without `--cacert …` if you got no certificate file). Anything else:
-   the address or port isn't reachable from there — tell your instructor.
+   (`-k` only because this check doesn't use the certificate; the deploy
+   does.) Anything else: that address or port isn't reachable from
+   there — tell your instructor.
 
-2. Copy the example config:
-   cp student_deploy/secrets.yml.example student_deploy/secrets.yml
-
-3. Fill in `secrets.yml`:
-   - `gerrit_owner_username` — your own GerritHub username (same as your
-     Jenkins user).
-   - `central_url`, `central_agent_name`, `central_agent_secret` — from step 1.
-   - `central_ca_cert` — the full path where you saved `jenkins-dr.crt`
-     (e.g. `/home/alice/jenkins-dr.crt`). Leave it blank only if you got
-     no certificate file.
-
-4. Run it:
+3. Run it:
    sudo ./student_deploy/deploy_agent.sh student_deploy/secrets.yml
 
-5. Confirm it's running:
+4. Confirm it's running:
    systemctl status jenkins-agent
+
+(No file from your instructor, just values? Copy
+`student_deploy/secrets.yml.example` to `student_deploy/secrets.yml` and
+fill it in — its comments say what goes where.)
 
 ## Approving builds on your node
 
@@ -40,7 +33,8 @@ Your node runs only builds of patch sets **you** uploaded to Gerrit —
 never another student's. Even those don't start on their own: each build
 pauses at an **Approval** step and waits for you.
 
-1. Log in to `central_url` with your Jenkins user and password.
+1. Log in to `central_url` with your Jenkins user and password (top of
+   your `secrets.yml`).
 2. Open the paused build (its job page, or the Gerrit change's link). The
    console shows exactly what is waiting: project, change, patch set,
    commit — check it is the code you mean to run.

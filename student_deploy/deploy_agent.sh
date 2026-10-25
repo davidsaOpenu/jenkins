@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Installs a Jenkins agent — just agent.jar + a systemd service pointed at
 # central Jenkins. Usage: sudo ./deploy_agent.sh <path-to-secrets.yml> —
-# fill in secrets.yml.example with the values the instructor gives you.
+# the secrets.yml the instructor sends you (or secrets.yml.example, filled
+# in by hand).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,8 +50,27 @@ install_ansible() {
 command -v ansible-playbook >/dev/null 2>&1 || install_ansible
 [[ -f "$SECRETS_FILE" ]] || { echo "✗ Not found: $SECRETS_FILE" >&2; exit 1; }
 
+# A secrets.yml made by the instructor (central_deploy/student_secrets.py)
+# carries central's certificate inline, as central_ca_cert_pem — written
+# to a file here, since the playbook installs it from a path. A path the
+# student set in central_ca_cert wins. The later -e overrides the file's.
+CA_ARGS=()
+CA_TMP=$(mktemp)
+trap 'rm -f "$CA_TMP"' EXIT
+if python3 - "$SECRETS_FILE" "$CA_TMP" <<'PYEOF'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1])) or {}
+pem = d.get("central_ca_cert_pem") or ""
+if d.get("central_ca_cert") or not pem.strip():
+    sys.exit(1)
+open(sys.argv[2], "w").write(pem)
+PYEOF
+then
+    CA_ARGS=(-e "central_ca_cert=${CA_TMP}")
+fi
+
 ansible-playbook -i "localhost," -c local -b \
-    -e "@${SECRETS_FILE}" \
+    -e "@${SECRETS_FILE}" ${CA_ARGS[@]+"${CA_ARGS[@]}"} \
     "${SCRIPT_DIR}/deploy_jenkins.yaml"
 
 echo "→ Verifying agent service..."

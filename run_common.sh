@@ -70,9 +70,9 @@ common_setup() {
     JENKINS_URL="https://${CENTRAL_IP}"
     # Where deploy_central_jenkins.sh puts the self-signed certificate it
     # makes when the config names none (its GENERATED_TLS_DIR) — fetched
-    # from the central VM after deploy, then handed to each agent VM.
+    # from the central VM after deploy, then embedded in each agent's
+    # secrets.yml by setup_students.sh.
     CENTRAL_GENERATED_CERT="/etc/jenkins-dr/tls/jenkins-dr.crt"
-    AGENT_CA_CERT="/home/vagrant/jenkins-dr/central-ca.crt"
     DUMMY_JOB="jenkins-dr-test"
     # Login password for both test-student accounts — also what
     # verify_node_routing submits when approving each one's own build (the
@@ -107,18 +107,6 @@ d = {
 }
 yaml.safe_dump(d, open(dst, 'w'))
 PYEOF
-}
-
-# Step: writes the secrets.yml-shaped file a node's deploy_agent.sh needs.
-build_node_secrets() {
-    local out_file="$1" owner="$2" agent_name="$3" agent_secret="$4"
-    cat > "$out_file" <<EOF
-gerrit_owner_username: "${owner}"
-central_url: "${JENKINS_URL}"
-central_agent_name: "${agent_name}"
-central_agent_secret: "${agent_secret}"
-central_ca_cert: "${AGENT_CA_CERT}"
-EOF
 }
 
 # Step: for a build that already exists (pushed via gerrit_multi_user_push.sh,
@@ -302,12 +290,13 @@ fetch_central_ca_cert() {
 }
 
 # Same shape as deploy_central — push repo + secrets, run the deploy script
-# locally inside the VM.
+# locally inside the VM. secrets_file is exactly what a student is sent
+# (setup_students.sh's students_secrets/<name>.secrets.yml, certificate
+# embedded) — nothing else is copied over.
 deploy_agent() {
     local vm_name="$1" secrets_file="$2"
     title "Deploy agent (${vm_name})"
     push_repo_into_vm "$vm_name"
-    scp -q -F "${WORKDIR}/${vm_name}.ssh_cfg" "$CENTRAL_CA_CERT" "${vm_name}:${AGENT_CA_CERT}"
     scp -q -F "${WORKDIR}/${vm_name}.ssh_cfg" "$secrets_file" "${vm_name}:/home/vagrant/jenkins-dr/agent_secrets_test.yml"
     run_in_vm "$vm_name" "sudo ./student_deploy/deploy_agent.sh agent_secrets_test.yml"
 }
@@ -360,7 +349,9 @@ if bad or missing:
 
 # Step: builds a students.yaml-shaped config from node A/B's identities,
 # then runs the real central_deploy/setup_students.sh — not a hand-rolled
-# shortcut. Sets NODEA_NAME/NODEA_SECRET and NODEB_NAME/NODEB_SECRET.
+# shortcut. Sets NODEA_NAME/NODEA_SECRET and NODEB_NAME/NODEB_SECRET, and
+# NODEA_SECRETS_FILE/NODEB_SECRETS_FILE: each student's generated
+# secrets.yml, which deploy_agent then uses as-is.
 provision_test_students() {
     title "Provision test students via setup_students.sh"
 
@@ -378,7 +369,15 @@ students:
 EOF
 
     JENKINS_URL="$JENKINS_URL" JENKINS_ADMIN_USER="$ADMIN_USER" JENKINS_ADMIN_PASSWORD="$ADMIN_PASS" \
+        CENTRAL_CA_CERT="$CENTRAL_CA_CERT" \
         bash "${SCRIPT_DIR}/central_deploy/setup_students.sh" "$config" "$creds"
+    NODEA_SECRETS_FILE="${WORKDIR}/students_secrets/${NODE_A_GERRIT_USERNAME}.secrets.yml"
+    NODEB_SECRETS_FILE="${WORKDIR}/students_secrets/${NODE_B_GERRIT_USERNAME}.secrets.yml"
+    local f
+    for f in "$NODEA_SECRETS_FILE" "$NODEB_SECRETS_FILE"; do
+        grep -q 'BEGIN CERTIFICATE' "$f" \
+            || { echo "✗ setup_students.sh didn't embed central's certificate in ${f}"; exit 1; }
+    done
 
     local creds_vars
     creds_vars=$(python3 - "$creds" "$NODE_A_GERRIT_USERNAME" "$NODE_B_GERRIT_USERNAME" <<'PYEOF'
