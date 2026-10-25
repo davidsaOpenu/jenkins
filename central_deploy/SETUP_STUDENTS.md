@@ -9,8 +9,8 @@ permissions and the name check below applies.
 Unless `gerrit_central.yml` named a real certificate (`tls_cert_file`),
 the deploy made a self-signed one, and both `setup_students.sh` and
 `reset_students.sh` refuse to talk to Jenkins until you tell them to trust
-it — they then fail with just "cannot log in", even with the right
-password. In every new shell, before running either script:
+it (they stop with "certificate isn't trusted"). In every new shell,
+before running either script:
 
     export CURL_CA_BUNDLE=/etc/jenkins-dr/tls/jenkins-dr.crt
 
