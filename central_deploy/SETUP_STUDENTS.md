@@ -29,10 +29,32 @@ the central machine it finds it by itself; elsewhere, also
 
 ## Adding students
 
-1. Copy the example config:
-   cp central_deploy/students.yaml.example central_deploy/students.yaml
+1. Make `students.yaml`. Easiest, from a list of the students' emails —
+   one per line in a file, any format with the address in it
+   (`Jane Doe <jane@x.org>`, CSV rows, ...); lines starting with `#` are
+   skipped:
 
-2. Fill in `students.yaml` — for each student:
+       cd central_deploy
+       ./find_gerrit_user.sh -f emails.txt --update students.yaml
+
+   (`emails*.txt` here is gitignored.)
+
+   For each email it finds the GerritHub account (exact match, no login
+   needed) and appends that student — their username as `name`, project
+   `all` (or `--project <label>`), a random password — unless they're
+   already in the file. It creates the file (owner-only) if missing, and
+   never prints the passwords. Emails can also go on the command line:
+   `./find_gerrit_user.sh --update students.yaml a@x.org b@y.org`. Without
+   `--update` it only prints the usernames.
+
+   An email it can't match is reported (`NOT FOUND`: the student has never
+   signed in to GerritHub, or uses another email there) and the rest are
+   still added — ask that student for their username, or to sign in once,
+   and re-run. Safe to re-run with the whole list any time.
+
+   Or by hand: `cp students.yaml.example students.yaml`.
+
+2. Check / fill in `students.yaml` — for each student:
    - `name` — their exact GerritHub username (not email). This becomes their
      Jenkins login and their agent node name (`<name>-vm`). Letters, digits
      and single inner hyphens only, not ending in `-vm` — the script refuses
@@ -88,7 +110,7 @@ created here — they only connect their own machine to it.
 
 Safe to re-run any time — existing users/nodes are updated, and each
 password is reset to the value in `students.yaml`. To add students later,
-add them to `students.yaml` and re-run.
+add them to `students.yaml` (step 1) and re-run.
 
 ## Passwords
 
