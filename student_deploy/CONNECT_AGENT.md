@@ -21,6 +21,23 @@
 5. Confirm it's running:
    systemctl status jenkins-agent
 
+## Approving builds on your node
+
+Your node runs only builds of patch sets **you** uploaded to Gerrit —
+never another student's. Even those don't start on their own: each build
+pauses at an **Approval** step and waits for you.
+
+1. Log in to `central_url` with your Jenkins user and password.
+2. Open the paused build (its job page, or the Gerrit change's link). The
+   console shows exactly what is waiting: project, change, patch set,
+   commit — check it is the code you mean to run.
+3. Click **Run it on my node**, or **Abort**. Nobody else can click it.
+   No answer within 15 minutes and the build fails.
+
+To run it again, comment `recheck` on the change in Gerrit — you can't
+start or stop builds from Jenkins itself. You can read every build's log,
+on every node.
+
 ## Supported systems
 
 Any Linux that uses systemd. The script installs what it needs:

@@ -5,7 +5,9 @@
 
 2. Fill in `students.yaml` — for each student:
    - `name` — their exact GerritHub username (not email). This becomes their
-     Jenkins login and their agent node name (`<name>-vm`).
+     Jenkins login and their agent node name (`<name>-vm`). Letters, digits
+     and single inner hyphens only, not ending in `-vm` — the script refuses
+     any name that could route one student's builds to another's node.
    - `project` — any short label, for your own reference only.
    - `password` — a Jenkins login password for them.
 
@@ -31,6 +33,24 @@
 
 Safe to re-run any time — existing users/nodes are updated, and each
 password is reset to the value in `students.yaml`.
+
+## What a student can do
+
+Logged in, every student is **read-only** on all of Jenkins: every job,
+every running and finished build, and every build's console log — on every
+node, theirs or not. Nothing else: they cannot start, retrigger, stop or
+configure builds, nor browse workspaces.
+
+Builds start only from Gerrit — a push, or a `recheck` comment on the
+change. A build of a change runs only on the node of the student who
+uploaded that patch set, never on anyone else's, and only after that
+student approves it: the build pauses (holding no node) at an Approval
+step showing the change, patch set and commit, which only the uploader
+can approve. Builds left unapproved fail after 15 minutes.
+
+The permissions are in `roles/jenkins/templates/jenkins.yaml.j2`
+(`authorizationStrategy`); the routing and approval in
+`jobs/jenkins-dr-test/Jenkinsfile`.
 
 ## Removing students
 

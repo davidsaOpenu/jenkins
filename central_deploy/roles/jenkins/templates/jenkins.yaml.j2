@@ -25,18 +25,22 @@ jenkins:
           password: "{{ jenkins_admin_password }}"
 
   authorizationStrategy:
-    # Central's Gerrit identity: full control. Everyone else logged in:
-    # read + start/stop their own builds (Job/Build covers Retrigger,
-    # which replays with the original Gerrit identity attached — the
-    # Jenkinsfile's Approval stage rejects any build with no such
-    # identity, so a context-less manual trigger can't go anywhere).
+    # Central's Gerrit identity: full control. Everyone else logged in
+    # (every student): read-only — all jobs, running builds and every
+    # build's console log, on every node. Nothing else, on purpose:
+    # - Job/Build / Job/Cancel are per-job, not per-owner — they would let
+    #   any student retrigger or abort any other student's build. Builds
+    #   start only from Gerrit (push, or a "recheck" comment).
+    # - Approving a build on one's own node needs no permission here: the
+    #   Approval stage's `input submitter:` names the uploader, which is
+    #   checked against the clicker's identity, not against Job/Build.
+    # - Agents connect with their node secret, not a user permission.
+    # No Job/Workspace, Job/Configure (Replay) or Agent/* either.
     globalMatrix:
       permissions:
         - "USER:Overall/Administer:{{ gerrit_username }}"
         - "GROUP:Overall/Read:authenticated"
         - "GROUP:Job/Read:authenticated"
-        - "GROUP:Job/Build:authenticated"
-        - "GROUP:Job/Cancel:authenticated"
 
 credentials:
   system:

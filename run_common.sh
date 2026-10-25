@@ -131,15 +131,16 @@ verify_node_routing() {
     local input_id="$INPUT_ID"
 
     if [[ -n "$wrong_user" ]]; then
-        # Jenkins accepts this submit at the HTTP level regardless (see
-        # Jenkinsfile) — the real check is that the pipeline rejects it
-        # and re-pauses on a fresh input instead of proceeding.
+        # Jenkins may refuse this submit outright (`input submitter:`) or
+        # accept it at the HTTP level — the real check is that the build
+        # is still paused afterwards instead of proceeding.
         echo "→ Confirming ${wrong_user} cannot approve ${submit_user}'s build..."
         submit_input_as "$DUMMY_JOB" "$build_number" "$input_id" "$wrong_user" "$wrong_pass" || true
         wait_for_pending_input "$DUMMY_JOB" "$build_number" \
             || { echo "✗ ${wrong_user} was WRONGLY able to approve this build"; exit 1; }
         input_id="$INPUT_ID"
         echo "  (correctly rejected — build re-paused for a fresh attempt)"
+        verify_student_read_only "$DUMMY_JOB" "$build_number" "$wrong_user" "$wrong_pass"
     fi
 
     echo "→ Approving as ${submit_user}..."
@@ -153,6 +154,35 @@ verify_node_routing() {
     wait_for_build_finish "$DUMMY_JOB" "$build_number"
     report_build_result "$DUMMY_JOB" "$build_number"
     check_build_ran_on "$DUMMY_JOB" "$build_number" "$expected_node"
+}
+
+# Step: proves a logged-in student is read-only on another student's
+# (paused) build — sees its console log, but can neither start a build of
+# the job nor stop this one (jenkins.yaml.j2 grants Overall/Read + Job/Read
+# only).
+verify_student_read_only() {
+    local job_name="$1" build_number="$2" username="$3" password="$4"
+    local cookie_jar crumb code
+    echo "→ Confirming ${username} can read ${job_name} #${build_number}'s log but not start or stop builds..."
+    code=$(curl -s -o /dev/null -w '%{http_code}' -u "${username}:${password}" \
+        "${JENKINS_URL}/job/${job_name}/${build_number}/consoleText")
+    [[ "$code" == "200" ]] || { echo "✗ ${username} cannot read build #${build_number}'s log (HTTP ${code})"; exit 1; }
+
+    # A real crumb, or the 403s below would only prove CSRF protection.
+    cookie_jar=$(mktemp -p "$WORKDIR")
+    crumb=$(curl -sf -u "${username}:${password}" -c "$cookie_jar" -b "$cookie_jar" \
+        "${JENKINS_URL}/crumbIssuer/api/json" \
+        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['crumbRequestField']+':'+d['crumb'])" 2>/dev/null)
+    [[ -n "$crumb" ]] || { echo "✗ ${username} could not get a crumb — cannot run the permission check"; exit 1; }
+
+    code=$(curl -s -o /dev/null -w '%{http_code}' -u "${username}:${password}" -c "$cookie_jar" -b "$cookie_jar" -H "$crumb" \
+        -X POST "${JENKINS_URL}/job/${job_name}/buildWithParameters")
+    [[ "$code" == "403" ]] || { echo "✗ ${username} was WRONGLY able to start a ${job_name} build (HTTP ${code})"; exit 1; }
+    code=$(curl -s -o /dev/null -w '%{http_code}' -u "${username}:${password}" -c "$cookie_jar" -b "$cookie_jar" -H "$crumb" \
+        -X POST "${JENKINS_URL}/job/${job_name}/${build_number}/stop")
+    [[ "$code" == "403" ]] || { echo "✗ ${username} was WRONGLY able to stop build #${build_number} (HTTP ${code})"; exit 1; }
+    rm -f "$cookie_jar"
+    echo "  (read-only, as expected — log readable, start/stop refused)"
 }
 
 # One-time, self-healing: builds and caches the centos9-java21 box on first

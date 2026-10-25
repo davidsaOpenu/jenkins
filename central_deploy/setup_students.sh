@@ -52,6 +52,27 @@ refuse_admin_as_student() {
     done
 }
 
+# A student's name is also their node's routing label (agentLabel() in
+# jobs/jenkins-dr-test/Jenkinsfile), so it must match no node but their
+# own "<name>-vm". GerritHub usernames are GitHub logins — letters, digits,
+# single inner hyphens — whose label is the name itself, so no two can
+# collide. A name ending in "-vm" would be another student's node name
+# (nodes carry their own name as a label), and built-in/master is the
+# controller. Ids are compared lowercased: Jenkins user ids ignore case.
+refuse_unsafe_names() {
+    local i name seen=" "
+    for i in $(seq 0 $((STUDENT_COUNT - 1))); do
+        name="STUDENT_${i}_NAME"; name="${!name}"
+        [[ "$name" =~ ^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$ ]] \
+            || { err "student name '${name}' is not a GerritHub username (letters, digits, single inner hyphens)"; exit 1; }
+        [[ "${name,,}" != *-vm && "${name,,}" != built-in && "${name,,}" != master ]] \
+            || { err "student name '${name}' would match another node's name — refusing"; exit 1; }
+        [[ "$seen" != *" ${name,,} "* ]] \
+            || { err "student name '${name}' is listed twice (names ignore case)"; exit 1; }
+        seen+="${name,,} "
+    done
+}
+
 # Emits the roster Jenkins needs as base64 JSON — nothing a student's
 # name/password contains can break out into the Groovy below. Label is one
 # of four intentional copies of sanitize_label (see deploy_verify.sh).
@@ -88,6 +109,16 @@ import jenkins.model.Jenkins
 
 def roster = new JsonSlurper().parseText(new String('__ROSTER_B64__'.decodeBase64(), 'UTF-8'))
 def jenkins = Jenkins.get()
+
+// Before changing anything: each student's label must match no node but
+// their own — not another node's name, nor a label some other node
+// (the built-in one included) already carries. See refuse_unsafe_names.
+roster.each { s ->
+    def others = (jenkins.getLabelAtom(s.label)?.nodes ?: []).findAll { it.nodeName != s.node }
+    if (jenkins.getNode(s.label) != null || others) {
+        throw new IllegalStateException("label '${s.label}' of student '${s.name}' already matches another node — refusing")
+    }
+}
 
 roster.each { s ->
     def user = User.getById(s.name, false)
@@ -129,9 +160,9 @@ run_provision_script() {
     [[ "$http" == "200" ]] || { err "student provisioning failed — HTTP ${http} from ${JENKINS_URL}/scriptText"; exit 1; }
 }
 
-# Read access on every job is already global (see jenkins.yaml.j2's
-# authorizationStrategy) — nothing per-student to grant. Fills the global
-# RESULTS array.
+# Read access on every job and build log is already global, and approving
+# a build needs no grant (see jenkins.yaml.j2's authorizationStrategy) —
+# nothing per-student to grant. Fills the global RESULTS array.
 provision_all_students() {
     RESULTS=()
     local response_file="${TMP_DIR}/provision.out"
@@ -219,6 +250,7 @@ main() {
     load_config
     load_jenkins_connection
     refuse_admin_as_student
+    refuse_unsafe_names
 
     TMP_DIR=$(mktemp -d)
     trap 'rm -rf "$TMP_DIR"' EXIT
