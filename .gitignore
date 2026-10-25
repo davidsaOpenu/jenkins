@@ -1,6 +1,8 @@
 vault.yml
 central_deploy/students.yaml
 central_deploy/students_credentials.yaml
+# One-off rosters / their output (SETUP_STUDENTS.md "Passwords") — hold passwords.
+central_deploy/students_*.yaml
 local_test.sh
 .vagrant/
 central_deploy/gerrit_agents.yml

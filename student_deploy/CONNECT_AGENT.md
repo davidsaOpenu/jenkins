@@ -38,6 +38,11 @@ To run it again, comment `recheck` on the change in Gerrit — you can't
 start or stop builds from Jenkins itself. You can read every build's log,
 on every node.
 
+Keep the Jenkins password your instructor gave you: it never expires, and
+if your instructor re-runs the student setup, any password you set yourself
+is replaced by that one. Forgot it? Ask your instructor — there is no
+reset email.
+
 ## Supported systems
 
 Any Linux that uses systemd. The script installs what it needs:

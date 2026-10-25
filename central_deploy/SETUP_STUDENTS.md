@@ -53,6 +53,31 @@ Safe to re-run any time — existing users/nodes are updated, and each
 password is reset to the value in `students.yaml`. To add students later,
 add them to `students.yaml` and re-run.
 
+## Passwords
+
+The password in `students.yaml` stays until someone changes it — Jenkins
+never asks for a change on first login, and it never expires. There is no
+"forgot password" email either: a forgotten password comes back to you.
+
+- **Students can change their own** (their name, top right → Security,
+  or `<jenkins_url>/me/account`). But the next `setup_students.sh` run
+  sets it back to the one in `students.yaml`. Simplest: ask students to
+  keep the one you gave them, so `students.yaml` always has it.
+- **Forgotten password:** look it up in `students.yaml` (or
+  `students_credentials.yaml`) and send it again.
+- **Reset one student only** (new password, or one they changed and
+  forgot): put just that student in a file of its own, with the new
+  password, and run the script on it — with its own output file, so the
+  full `students_credentials.yaml` isn't overwritten:
+
+      ./setup_students.sh students_alice.yaml students_credentials_alice.yaml
+
+  Then update their entry in `students.yaml` too, or the next full run
+  puts the old password back. Their node is re-created with the same
+  agent secret, so their `secrets.yml` keeps working. Both files hold the
+  password: keep the `students_*.yaml` names (gitignored) and delete them
+  afterwards.
+
 ## What a student can do
 
 Logged in, every student is **read-only** on all of Jenkins: every job,
