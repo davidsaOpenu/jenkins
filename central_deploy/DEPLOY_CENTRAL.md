@@ -191,9 +191,18 @@ after their first real run.
 ## Updating later
 
 Re-run the same `setup_central.sh` command after changing
-`gerrit_central.yml`, pulling new changes to `central_deploy/`, or adding a
-job folder. Jenkinsfile edits need no re-run (jobs read them from
-GerritHub). Re-runs reuse the SSH key, admin password and certificate.
+`gerrit_central.yml`, pulling new changes to `central_deploy/` or
+`jobs/jenkins-dr-test/`, or adding a job folder. Other Jenkinsfile edits
+need no re-run (those jobs read them from GerritHub); `jenkins-dr-test`'s
+is copied from this checkout at deploy time. Re-runs reuse the SSH key,
+admin password and certificate, and keep students and their nodes.
+
+A re-run always **restarts Jenkins** — running builds, and builds paused
+for approval, are lost. Pick a quiet moment.
+
+Deploy before onboarding students (`SETUP_STUDENTS.md`): students added
+to an older deploy log in with whatever permissions it grants until the
+re-run.
 
 ## Troubleshooting
 
@@ -238,6 +247,6 @@ Useful checks: `systemctl status jenkins nginx`, `sudo ss -ltnp`,
 - If the service account is also used by CI's nightly test pushes (as
   `jenkins-osw` is), this Jenkins sees those pushes too and starts
   `jenkins-dr-test` builds for them. They wait for an approval that never
-  comes and fail after ~30 minutes, without voting — noise, not harm.
+  comes and fail after 15 minutes, without voting — noise, not harm.
 - `deploy_central_jenkins.sh` can also be run on its own (same argument)
   on a machine that's already prepared — it is step 5 above.

@@ -1,5 +1,9 @@
 # Setting up students
 
+Deploy (or update) central first — `DEPLOY_CENTRAL.md` — and run this from
+a checkout of the same version, so students never get an older deploy's
+permissions and the name check below applies.
+
 1. Copy the example config:
    cp central_deploy/students.yaml.example central_deploy/students.yaml
 
@@ -25,14 +29,29 @@
 
    (Optional custom paths: `./setup_students.sh <config.yaml> <creds_output.yaml>`)
 
-4. Read the output file (`students_credentials.yaml` by default) — it has each
-   student's agent name + secret, needed to connect their Jenkins agent.
+4. Read the output file (`students_credentials.yaml` by default, owner-only)
+   — it has each student's Jenkins password and agent name + secret.
 
-5. Give each student their own agent name + secret from that file. Never share
-   `students.yaml` itself — it holds real passwords and is gitignored.
+5. Send each student, privately and one-to-one (never a group channel),
+   only their own:
+   - Jenkins URL, user (their `name`) and password — to log in, watch
+     builds and approve their own;
+   - `central_url`, `central_agent_name` and `central_agent_secret` — to
+     connect their node (`student_deploy/CONNECT_AGENT.md`);
+   - with a self-signed certificate: a copy of it, as `central_ca_cert`.
+
+   The agent secret lets anyone connect as that student's node, and
+   recreating the node does not change it (Jenkins derives it from the
+   node name). If one leaks, `./reset_students.sh <name>` — with the node
+   gone, the secret connects to nothing. Never share `students.yaml`
+   itself — it holds real passwords and is gitignored.
+
+Students can't add nodes themselves: each gets exactly one, `<name>-vm`,
+created here — they only connect their own machine to it.
 
 Safe to re-run any time — existing users/nodes are updated, and each
-password is reset to the value in `students.yaml`.
+password is reset to the value in `students.yaml`. To add students later,
+add them to `students.yaml` and re-run.
 
 ## What a student can do
 
