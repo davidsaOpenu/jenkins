@@ -2,8 +2,47 @@ properties([
     [$class: 'PriorityJobProperty', priority: 3]
 ])
 
+// Routes to whichever agent belongs to the patchset's uploader — which
+// node builds this IS the routing decision (assertOwnNode() below only
+// double-checks it). Same derivation as jenkins.yaml.j2's built-in-node
+// label and setup_students.sh.
+def agentLabel(String username) {
+    if (!username) {
+        error('No Gerrit uploader on this build — refusing to pick a node.')
+    }
+    return username.replaceAll(/[^A-Za-z0-9]+/, '-')
+}
+
+// Defense in depth behind the label routing: the first thing inside the
+// node block, before any step touches the node — stops the build unless
+// the node really is the uploader's own: their "<name>-vm"
+// (setup_students.sh), or the built-in node for central's own identity.
+// GERRIT_OWNER_USERNAME is only trusted on the built-in node, where the
+// controller alone sets it (JCasC's globalNodeProperties) — on an agent
+// it comes from that agent's own service unit. NODE_NAME is blank (or
+// "master") on the built-in node on some Jenkins versions; normalized.
+def assertOwnNode(String username) {
+    def node = env.NODE_NAME
+    if (!node || node == 'master') {
+        node = 'built-in'
+    }
+    def own = (node == 'built-in') ? (username == env.GERRIT_OWNER_USERNAME)
+                                   : (node == username + '-vm')
+    if (!own) {
+        error("Refusing to run: landed on '${node}', which is not ${username}'s own node.")
+    }
+    return node
+}
+
+// The daily build of master — already reviewed code, so it skips Approval
+// and runs on the shared nodes. Checked by what started the build, so a
+// manual "Build" click can never pass as one.
+def isCron() {
+    return !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').isEmpty()
+}
+
 pipeline {
-    agent any
+    agent none
 
     triggers {
         gerrit(
@@ -64,25 +103,68 @@ pipeline {
     }
 
     stages {
-        stage('Acquire lock') {
+        stage('Approval') {
+            when { expression { !isCron() } }
             steps {
+                // No node is allocated here (agent none above) — nothing
+                // touches anyone's node until the uploader approves.
+                // submitter: limits who may click, but an admin always
+                // passes it — the loop below is the real check, using the
+                // real authenticated clicker's identity.
                 script {
-                    if (env.GERRIT_CHANGE_ID) {
-                        // Gerrit builds: job-global + Change-ID specific lock
-                        lock(resource: "job-${env.JOB_NAME}") {
+                    def uploader = env.GERRIT_PATCHSET_UPLOADER_USERNAME
+                    if (!uploader) {
+                        error('Manual builds are not supported — this job only runs from a real Gerrit push or a "recheck" comment.')
+                    }
+                    // Exactly what the click lets run, so it's an informed
+                    // one — the prompt sits right below this in the console.
+                    echo """PAUSED — waiting for ${uploader} to approve this build.
+  Event:     ${env.GERRIT_EVENT_TYPE}
+  Project:   ${env.GERRIT_PROJECT} (branch ${env.GERRIT_BRANCH})
+  Change:    ${env.GERRIT_CHANGE_NUMBER} — ${env.GERRIT_CHANGE_SUBJECT}
+             ${env.GERRIT_CHANGE_URL}
+  Patch set: ${env.GERRIT_PATCHSET_NUMBER}, uploaded by ${uploader}
+  Commit:    ${env.GERRIT_PATCHSET_REVISION}
+  Runs on:   ${uploader}'s own node, nobody else's"""
+                    def approver = null
+                    def matched = false
+                    for (int attempt = 1; attempt <= 2 && !matched; attempt++) {
+                        timeout(time: 15, unit: 'MINUTES') {
+                            approver = input message: "${uploader}: run change ${env.GERRIT_CHANGE_NUMBER} patch set ${env.GERRIT_PATCHSET_NUMBER} " +
+                                                      "(commit ${env.GERRIT_PATCHSET_REVISION}) on your own node? " +
+                                                      "Only approve code you have reviewed — it runs with your agent's privileges. (attempt ${attempt}/2)",
+                                             ok: 'Run it on my node',
+                                             submitter: uploader,
+                                             submitterParameter: 'APPROVER'
+                        }
+                        matched = (approver == uploader)
+                        if (!matched) {
+                            echo "REJECTED (attempt ${attempt}/2) — ${approver} is not ${uploader}."
+                        }
+                    }
+                    if (!matched) {
+                        error("Approval failed — wrong identity after 2 attempts")
+                    }
+                    echo "APPROVED by ${approver} — resuming build."
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                // No job-wide lock: one executor per student node already
+                // means one build at a time per student. The timeout also
+                // covers waiting for a student node that is offline.
+                script {
+                    def uploader = env.GERRIT_PATCHSET_UPLOADER_USERNAME
+                    timeout(time: 220, unit: 'MINUTES') {
+                        if (isCron()) {
+                            node { runPipeline() }
+                        } else {
                             lock(resource: "gerrit-${env.GERRIT_CHANGE_ID}", inversePrecedence: true) {
-                                echo "Acquired locks: job=${env.JOB_NAME}, change=${env.GERRIT_CHANGE_ID}"
-                                timeout(time: 220, unit: 'MINUTES') {
+                                node(agentLabel(uploader)) {
+                                    assertOwnNode(uploader)
                                     runPipeline()
                                 }
-                            }
-                        }
-                    } else {
-                        // Non-Gerrit builds: only global lock
-                        lock(resource: "job-${env.JOB_NAME}") {
-                            echo "Acquired lock: job=${env.JOB_NAME} (non-Gerrit build)"
-                            timeout(time: 220, unit: 'MINUTES') {
-                                runPipeline()
                             }
                         }
                     }
