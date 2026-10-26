@@ -31,15 +31,25 @@ fill it in — its comments say what goes where.)
 
 Your node runs only builds of patch sets **you** uploaded to Gerrit —
 never another student's. Even those don't start on their own: each build
-pauses at an **Approval** step and waits for you.
+pauses at an **Approval** step and waits for you — but only while your
+agent is connected. If it isn't, nothing is asked: the build runs on
+central's own (built-in) node instead, in the regular queue, as all
+builds did before student nodes. To have it on your node, start the
+agent (`systemctl status jenkins-agent`) and comment `recheck`.
 
 1. Log in to `central_url` with your Jenkins user and password (top of
    your `secrets.yml`).
 2. Open the paused build (its job page, or the Gerrit change's link). The
-   console shows exactly what is waiting: project, change, patch set,
-   commit — check it is the code you mean to run.
-3. Click **Run it on my node**, or **Abort**. Nobody else can click it.
-   No answer within 15 minutes and the build fails.
+   console shows exactly what is waiting: job, project, change, patch
+   set, commit — check it is the code you mean to run.
+3. Click **Run it on my node**, or **Abort**. Only your Run counts —
+   anyone else's is refused and the question stays open. Abort, though,
+   anyone logged in can click. No answer within 15 minutes and the build
+   is aborted.
+
+Approved, the job's own build steps run on your machine — the same CI
+scripts as the project's (VMs, containers, ...). Your machine needs what
+they use; if a build fails for a missing tool, install it and `recheck`.
 
 To run it again, comment `recheck` on the change in Gerrit — you can't
 start or stop builds from Jenkins itself. You can read every build's log,

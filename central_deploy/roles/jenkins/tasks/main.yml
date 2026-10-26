@@ -250,7 +250,8 @@
       # strings. preferIPv4Stack matters because this JVM (Gerrit SSH,
       # update checks) has its own IPv6 preference, past curl -4/dnf's
       # reach and past gai.conf, which Java doesn't consult.
-      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true -jar {{ jenkins_home }}/jenkins.war --httpListenAddress=127.0.0.1 --httpPort={{ jenkins_internal_port }}{{ (' --prefix=' ~ jenkins_prefix) if jenkins_prefix else '' }}
+      # ALLOW_LOCAL_CHECKOUT: CI's test VM only (osw_ci_lib_source).
+      ExecStart={{ java21_home.stdout }}/bin/java -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Djava.net.preferIPv4Stack=true{{ ' -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true' if osw_ci_lib_source == 'checkout' else '' }} -jar {{ jenkins_home }}/jenkins.war --httpListenAddress=127.0.0.1 --httpPort={{ jenkins_internal_port }}{{ (' --prefix=' ~ jenkins_prefix) if jenkins_prefix else '' }}
       Restart=on-failure
       TimeoutStartSec=300
 
@@ -317,6 +318,57 @@
     owner: jenkins
     group: jenkins
     mode: "0644"
+  tags: configure
+
+# The osw-ci shared library: from GerritHub master in production; in CI's
+# test VM (osw_ci_lib_source: checkout) from the deploying checkout, for
+# the same reason as the dummy job's Jenkinsfile — CI exercises the
+# library under test. See defaults/main.yml.
+- name: Check osw_ci_lib_source
+  ansible.builtin.assert:
+    that: osw_ci_lib_source in ['gerrithub', 'checkout']
+    fail_msg: "osw_ci_lib_source must be 'gerrithub' or 'checkout', not '{{ osw_ci_lib_source }}'"
+    quiet: true
+  tags: configure
+
+- name: Clear the previously staged osw-ci library
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/osw-ci-lib/vars"
+    state: absent
+  changed_when: false
+  when: osw_ci_lib_source == 'checkout'
+  tags: configure
+
+- name: Stage the osw-ci library (vars/) from this checkout
+  ansible.builtin.copy:
+    src: "{{ osw_ci_lib_src }}/"
+    dest: "{{ jenkins_home }}/osw-ci-lib/vars/"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+    directory_mode: "0755"
+  changed_when: false
+  when: osw_ci_lib_source == 'checkout'
+  tags: configure
+
+- name: Commit the staged osw-ci library
+  ansible.builtin.shell: |
+    set -e
+    cd "{{ jenkins_home }}/osw-ci-lib"
+    [ -d .git ] || git init -q -b master
+    git add -A
+    if git diff --cached --quiet; then
+      echo unchanged
+    else
+      git -c user.name=setup_central -c user.email=setup_central@localhost \
+        commit -q -m "osw-ci library from the deploying checkout"
+      echo committed
+    fi
+  become: true
+  become_user: jenkins
+  register: osw_ci_lib_commit
+  changed_when: "'committed' in osw_ci_lib_commit.stdout"
+  when: osw_ci_lib_source == 'checkout'
   tags: configure
 
 - name: Deploy JCasC configuration

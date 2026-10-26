@@ -1,9 +1,13 @@
+// Approval gate and own-node routing (approvalGate, buildLabel,
+// assertOwnNode): the osw-ci library, vars/ in this repo.
+@Library('osw-ci') _
+
 properties([
     [$class: 'PriorityJobProperty', priority: 10]
 ])
 
 pipeline {
-    agent any
+    agent none
 
     triggers {
         gerrit(
@@ -71,9 +75,21 @@ pipeline {
                 }
             }
         }
+        stage('Approval') {
+            steps {
+                // agent none above: no node or lock is held while it
+                // waits. Central's own builds (timer, admin) pass
+                // straight through to the built-in node.
+                script {
+                    approvalGate(allowCentralBuilds: true)
+                }
+            }
+        }
         stage('Acquire lock') {
+            agent { label buildLabel() }
             steps {
                 script {
+                    currentBuild.description = assertOwnNode()
                     if (env.GERRIT_CHANGE_ID) {
                         // Gerrit builds: job-global + Change-ID specific lock
                         lock(resource: "job-${env.JOB_NAME}") {
@@ -95,37 +111,40 @@ pipeline {
                     }
                 }
             }
-        }
-    }
+            post {
+                always {
+                    script {
+                        // Only on the build's own node: nothing runs on a
+                        // node the build was refused on.
+                        if (env.OWN_NODE_OK == 'yes') {
+                            sh '''
+                                echo "==================== VM CLEANUP ===================="
 
-    post {
-        always {
-            script {
-                sh '''
-                    echo "==================== VM CLEANUP ===================="
+                                if [ -f vm_pid.txt ]; then
+                                    VM_PID=$(cat vm_pid.txt)
+                                    echo "Cleaning up VM with PID: $VM_PID"
+                                    kill $VM_PID || true
+                                    wait $VM_PID 2>/dev/null || true
+                                    rm -f vm_pid.txt
+                                else
+                                    echo "No VM PID file found - VM may have already been cleaned up"
+                                fi
 
-                    if [ -f vm_pid.txt ]; then
-                        VM_PID=$(cat vm_pid.txt)
-                        echo "Cleaning up VM with PID: $VM_PID"
-                        kill $VM_PID || true
-                        wait $VM_PID 2>/dev/null || true
-                        rm -f vm_pid.txt
-                    else
-                        echo "No VM PID file found - VM may have already been cleaned up"
-                    fi
+                                if [ -f vm_image.txt ]; then
+                                    IMAGE_NAME=$(cat vm_image.txt)
+                                    echo "Removing image file: $IMAGE_NAME"
+                                    rm -f $IMAGE_NAME
+                                    rm -f vm_image.txt
+                                fi
 
-                    if [ -f vm_image.txt ]; then
-                        IMAGE_NAME=$(cat vm_image.txt)
-                        echo "Removing image file: $IMAGE_NAME"
-                        rm -f $IMAGE_NAME
-                        rm -f vm_image.txt
-                    fi
+                                rm -f vm_port.txt
 
-                    rm -f vm_port.txt
-
-                    echo "VM cleanup completed"
-                    echo "==================== END CLEANUP ===================="
-                '''
+                                echo "VM cleanup completed"
+                                echo "==================== END CLEANUP ===================="
+                            '''
+                        }
+                    }
+                }
             }
         }
     }

@@ -180,8 +180,11 @@ runs it. It can also be run on its own on a deployed Jenkins:
 - Re-running is safe: jobs already pointing at the right Jenkinsfile, with
   triggers registered, are left alone.
 
-What the jobs need from the machine — they run on the built-in node as the
-`jenkins` user: the tools their Jenkinsfiles call (e.g. docker,
+What the jobs need from the machine — central's own builds (the daily
+timer, admin-started ones, and changes uploaded by the service account)
+run on the built-in node as the `jenkins` user; students' changes run on
+their own nodes instead (`SETUP_STUDENTS.md`). The built-in node needs
+the tools their Jenkinsfiles call (e.g. docker,
 vagrant/libvirt for the VM-based ones) and the matching group memberships
 for `jenkins` (see `SECURITY_NOTES.md` for what those memberships imply).
 Pipelines that call Jenkins' internal API (e.g. `periodic-tasks`) need
@@ -194,7 +197,18 @@ Re-run the same `setup_central.sh` command after changing
 `gerrit_central.yml`, pulling new changes to `central_deploy/` or
 `jobs/jenkins-dr-test/`, or adding a job folder. Other Jenkinsfile edits
 need no re-run (those jobs read them from GerritHub); `jenkins-dr-test`'s
-is copied from this checkout at deploy time. Re-runs reuse the SSH key,
+is copied from this checkout at deploy time. Nor do changes to `vars/`,
+the `osw-ci` library with the approval gate every job loads: Jenkins
+reads it from GerritHub master at each build, like the Jenkinsfiles, so
+a merged change applies to the next build.
+
+**Once, when the library first arrives:** the deploy is what registers
+`osw-ci` in Jenkins, and every Jenkinsfile on master loads it. So deploy
+*first* — re-run `setup_central.sh` from a checkout that includes
+`vars/` — and only then merge that change to master. The other way
+round, every job fails with "No library configured for name osw-ci"
+until the deploy. (Until the merge, `jenkins-dr-test` fails instead,
+finding no `vars/` on master — harmless.) Re-runs reuse the SSH key,
 admin password and certificate, and keep students and their nodes.
 
 A re-run always **restarts Jenkins** — running builds, and builds paused

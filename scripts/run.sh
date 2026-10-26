@@ -12,6 +12,10 @@ main() {
     parse_args "$@"
     common_setup "$@"
 
+    # Before any VM work: every job's approval gate must be the one this
+    # run exercises through jenkins-dr-test.
+    "${SCRIPT_DIR}/scripts/check_approval_gate.sh"
+
     # Step 1: tear down any VMs left over from a previous run, so every run
     # starts from a genuinely clean, consistent state
     clean_start

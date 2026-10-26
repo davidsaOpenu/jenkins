@@ -180,7 +180,7 @@ yaml.safe_dump({
 }, open(dst, 'w'))
 PYEOF
 
-    local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile")
+    local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile" -e "osw_ci_lib_src=${REPO_ROOT}/vars")
     ansible-playbook -i "localhost," -c local -b \
         "${extra_vars[@]}" \
         "${REPO_ROOT}/central_deploy/deploy_jenkins.yml"

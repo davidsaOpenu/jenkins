@@ -1,9 +1,13 @@
+// Approval gate and own-node routing (approvalGate, buildLabel,
+// assertOwnNode): the osw-ci library, vars/ in this repo.
+@Library('osw-ci') _
+
 properties([
     [$class: 'PriorityJobProperty', priority: 20]
 ])
 
 pipeline {
-    agent any
+    agent none
 
     triggers {
         gerrit(
@@ -43,7 +47,6 @@ pipeline {
                 numToKeepStr: '24'
             )
         )
-        timeout(time: 15, unit: 'MINUTES')
         timestamps()
         disableConcurrentBuilds()
     }
@@ -62,48 +65,75 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Approval') {
             steps {
+                // agent none above: no node is held while it waits.
+                // Central's own builds (timer, admin) pass straight
+                // through to the built-in node.
                 script {
-                    sh "ls; rm -rf *; ls"
-
-                    def repos = [
-                        [
-                            dir: 'xv6',
-                            branch: params.GERRIT_BRANCH,
-                            url: 'https://review.gerrithub.io/davidsaOpenu/xv6',
-                            useSubmodules: true
-                        ],
-
-                    ]
-
-                    for (repo in repos) {
-                        if (repo.dir == 'xv6') {
-                            checkout(scmGit(
-                                branches: [[name: repo.branch]],
-                                extensions: [
-                                    [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
-                                    [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
-                                    [$class: 'SubmoduleOption', recursiveSubmodules: true],
-                                    [$class: 'CloneOption', timeout: 20],
-                                ],
-                                userRemoteConfigs: [
-                                    [refspec: params.GERRIT_REFSPEC,
-                                     url: repo.url]
-                                ]
-                            ))
-                        }
-                    }
+                    approvalGate(allowCentralBuilds: true)
                 }
             }
         }
+        stage('Build') {
+            agent { label buildLabel() }
+            // The build's own limit — the Approval wait above is not
+            // counted against it.
+            options {
+                timeout(time: 15, unit: 'MINUTES')
+            }
+            stages {
+                stage('Own node') {
+                    steps {
+                        script {
+                            currentBuild.description = assertOwnNode()
+                        }
+                    }
+                }
+                stage('Checkout') {
+                    steps {
+                        script {
+                            sh "ls; rm -rf *; ls"
 
-        stage('Setup VM and Test Podman') {
-            steps {
-                script {
-                    sh '''
-                        ./xv6/infra/bootstrap.sh
-                    '''
+                            def repos = [
+                                [
+                                    dir: 'xv6',
+                                    branch: params.GERRIT_BRANCH,
+                                    url: 'https://review.gerrithub.io/davidsaOpenu/xv6',
+                                    useSubmodules: true
+                                ],
+
+                            ]
+
+                            for (repo in repos) {
+                                if (repo.dir == 'xv6') {
+                                    checkout(scmGit(
+                                        branches: [[name: repo.branch]],
+                                        extensions: [
+                                            [$class: 'RelativeTargetDirectory', relativeTargetDir: repo.dir],
+                                            [$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']],
+                                            [$class: 'SubmoduleOption', recursiveSubmodules: true],
+                                            [$class: 'CloneOption', timeout: 20],
+                                        ],
+                                        userRemoteConfigs: [
+                                            [refspec: params.GERRIT_REFSPEC,
+                                             url: repo.url]
+                                        ]
+                                    ))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('Setup VM and Test Podman') {
+                    steps {
+                        script {
+                            sh '''
+                                ./xv6/infra/bootstrap.sh
+                            '''
+                        }
+                    }
                 }
             }
         }

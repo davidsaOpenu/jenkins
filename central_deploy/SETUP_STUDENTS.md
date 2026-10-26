@@ -159,16 +159,31 @@ every running and finished build, and every build's console log — on every
 node, theirs or not. Nothing else: they cannot start, retrigger, stop or
 configure builds, nor browse workspaces.
 
-Builds start only from Gerrit — a push, or a `recheck` comment on the
-change. A build of a change runs only on the node of the student who
-uploaded that patch set, never on anyone else's, and only after that
-student approves it: the build pauses (holding no node) at an Approval
-step showing the change, patch set and commit, which only the uploader
-can approve. Builds left unapproved fail after 15 minutes.
+This holds for every job except `periodic-tasks`. Builds of a change
+start only from Gerrit — a push, or a `recheck` comment on the change.
+Each runs only on the node of the student who uploaded that patch set,
+never on anyone else's, and only after that student approves it — if
+the uploader's node is connected. Then the build pauses (holding no
+node) at an Approval step showing the job, change, patch set and commit:
+only the uploader's Run counts, while anyone logged in can Abort;
+unanswered, it is aborted after 15 minutes. If the node isn't connected
+(or the uploader has none), nothing is asked: the build joins the
+regular queue on the built-in node, as every build did before student
+nodes. Note what that means: a change from anyone without a connected
+node — a student whose agent is down, or any GerritHub user — runs on
+central unapproved, as the `jenkins` user. Each job's own
+build steps then run on the student's machine, which needs whatever
+that job's CI calls (vagrant/libvirt, podman, ...). Central's own builds
+— the daily timer, or one an admin starts — run on the built-in node
+with no approval.
 
 The permissions are in `roles/jenkins/templates/jenkins.yaml.j2`
-(`authorizationStrategy`); the routing and approval in
-`jobs/jenkins-dr-test/Jenkinsfile`.
+(`authorizationStrategy`); the routing and approval in the `osw-ci`
+shared library — `vars/` in this repo (`approvalGate`, `buildLabel`,
+`assertOwnNode`) — which every job but `periodic-tasks` loads with
+`@Library('osw-ci')`. CI tests it end to end through `jenkins-dr-test`,
+and `scripts/check_approval_gate.sh` (run by CI) checks every other job
+uses it and keeps no copy of its own.
 
 ## Removing students
 

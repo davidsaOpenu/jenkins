@@ -104,6 +104,9 @@ d = {
     'jenkins_url': f'https://{ip}',
     'tls_cert_file': '',
     'tls_key_file': '',
+    # The osw-ci library from this checkout, not GerritHub master — so
+    # this run exercises the gate under test (roles/jenkins defaults).
+    'osw_ci_lib_source': 'checkout',
 }
 yaml.safe_dump(d, open(dst, 'w'))
 PYEOF

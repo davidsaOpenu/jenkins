@@ -66,6 +66,23 @@ credentials:
 unclassified:
   location:
     url: "{{ jenkins_url }}/"
+  # The osw-ci shared library — the approval gate every job's Jenkinsfile
+  # loads with @Library('osw-ci'): this repo's master on GerritHub, or the
+  # deploying checkout in CI's test VM (osw_ci_lib_source). Trusted
+  # (global) library, so: no version override, or a Jenkinsfile could
+  # load an unmerged ref of it; not implicit, so only jobs that ask get it.
+  globalLibraries:
+    libraries:
+      - name: "osw-ci"
+        defaultVersion: "master"
+        allowVersionOverride: false
+        implicit: false
+        includeInChangesets: false
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "{{ (jenkins_home ~ '/osw-ci-lib') if osw_ci_lib_source == 'checkout' else osw_ci_lib_gerrithub_remote }}"
   gerrit-trigger:
     servers:
       - name: "review.gerrithub.io"

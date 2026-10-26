@@ -1,9 +1,13 @@
+// Approval gate and own-node routing (approvalGate, buildLabel,
+// assertOwnNode): the osw-ci library, vars/ in this repo.
+@Library('osw-ci') _
+
 properties([
     [$class: 'PriorityJobProperty', priority: 2]
 ])
 
 pipeline {
-    agent any
+    agent none
 
     triggers {
         gerrit(
@@ -64,9 +68,21 @@ pipeline {
     }
 
     stages {
+        stage('Approval') {
+            steps {
+                // agent none above: no node or lock is held while it
+                // waits. Central's own builds (timer, admin) pass
+                // straight through to the built-in node.
+                script {
+                    approvalGate(allowCentralBuilds: true)
+                }
+            }
+        }
         stage('Acquire lock') {
+            agent { label buildLabel() }
             steps {
                 script {
+                    currentBuild.description = assertOwnNode()
                     if (env.GERRIT_CHANGE_ID) {
                         // Gerrit builds: job-global + Change-ID specific lock
                         lock(resource: "job-${env.JOB_NAME}") {
@@ -88,16 +104,19 @@ pipeline {
                     }
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            script {
-                dir('jenkins/scripts') {
-                    sh './cleanup.sh'
+            post {
+                always {
+                    script {
+                        // Only on the build's own node: nothing runs on a
+                        // node the build was refused on.
+                        if (env.OWN_NODE_OK == 'yes') {
+                            dir('jenkins/scripts') {
+                                sh './cleanup.sh'
+                            }
+                        }
+                    }
                 }
-           }
+            }
         }
     }
 }

@@ -39,3 +39,15 @@ jenkins_plugins:
   - PrioritySorter
   - timestamper
   - pipeline-stage-view
+
+# Where the osw-ci shared library (vars/: the approval gate every job
+# calls) comes from:
+# - gerrithub (production): this repo's master on GerritHub — the same
+#   place every job's Jenkinsfile is read from, so the two never drift and
+#   a merged change to the gate applies with no redeploy.
+# - checkout (CI's disposable test VM only): the deploying checkout's
+#   vars/, so CI exercises the library under test. Jenkins' git plugin
+#   refuses local repositories unless ALLOW_LOCAL_CHECKOUT is set, so this
+#   also sets it — never use it on a real central.
+osw_ci_lib_source: gerrithub
+osw_ci_lib_gerrithub_remote: "https://review.gerrithub.io/davidsaOpenu/jenkins"
