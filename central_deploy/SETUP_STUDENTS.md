@@ -88,7 +88,21 @@ the central machine it finds it by itself; elsewhere, also
 
 5. Send each student **their own** `students_secrets/<name>.secrets.yml`
    — that one file, nothing else — privately and one-to-one (never a
-   group channel). For example:
+   group channel). To email them all from `emails.txt`:
+
+       ./send_student_secrets.py --from <you>@gmail.com          # dry run
+       ./send_student_secrets.py --from <you>@gmail.com --send
+
+   It re-checks each email against GerritHub, sends that account's
+   username's file only (one recipient, one attachment, instructions in
+   the body), and logs what went where in `students_secrets/sent.log`,
+   so re-running sends only new or regenerated files (`--only <name>` for
+   one student, `--force` to resend). It sends through Gmail and asks for
+   the password: a Google **app password**, not your normal one — turn
+   on 2-Step Verification (myaccount.google.com/signinoptions/twosv),
+   then create one at myaccount.google.com/apppasswords (and delete it
+   when done). Another provider: `--smtp host:port`. By hand, the
+   message is:
 
        Attached: your Jenkins agent settings. Save it as
        student_deploy/secrets.yml in your clone of this repo, then run
