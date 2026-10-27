@@ -1,5 +1,6 @@
-// Approval gate and own-node routing (approvalGate, buildLabel,
-// assertOwnNode): the osw-ci library, vars/ in this repo.
+// Approval gate, own-node routing and superseding older patch sets
+// (approvalGate, abortOlderPatchsets, buildLabel, assertOwnNode): the
+// osw-ci library, vars/ in this repo.
 @Library('osw-ci') _
 
 properties([
@@ -48,7 +49,6 @@ pipeline {
             )
         )
         timestamps()
-        disableConcurrentBuilds()
     }
 
     parameters {
@@ -72,6 +72,7 @@ pipeline {
                 // through to the built-in node.
                 script {
                     approvalGate(allowCentralBuilds: true)
+                    abortOlderPatchsets()
                 }
             }
         }

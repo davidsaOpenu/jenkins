@@ -1,5 +1,6 @@
-// Approval gate and own-node routing (approvalGate, buildLabel,
-// assertOwnNode): the osw-ci library, vars/ in this repo.
+// Approval gate, own-node routing and superseding older patch sets
+// (approvalGate, abortOlderPatchsets, buildLabel, assertOwnNode): the
+// osw-ci library, vars/ in this repo.
 @Library('osw-ci') _
 
 pipeline {
@@ -67,6 +68,7 @@ pipeline {
                 // Manual builds are refused: Gerrit builds only.
                 script {
                     approvalGate()
+                    abortOlderPatchsets()
                 }
             }
         }

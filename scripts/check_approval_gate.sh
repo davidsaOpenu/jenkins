@@ -3,16 +3,17 @@
 # osw-ci library's steps (vars/) — and none carries its own copy. CI
 # exercises the gate end to end only through jobs/jenkins-dr-test, so
 # this proves every other job uses exactly that code: loads the library,
-# runs an Approval stage on approvalGate(), builds on buildLabel() and
-# checks assertOwnNode() first — and defines none of those itself (a
-# script method of the same name would silently win over the library's).
+# runs an Approval stage on approvalGate() then abortOlderPatchsets(),
+# builds on buildLabel() and checks assertOwnNode() first — and defines
+# none of those itself (a script method of the same name would silently
+# win over the library's).
 # Usage: scripts/check_approval_gate.sh   (exit 1 on any problem)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Not gated: no Gerrit trigger, only central's own scheduled maintenance.
 EXEMPT="periodic-tasks"
-STEPS=(approvalGate buildLabel assertOwnNode buildOwner)
+STEPS=(approvalGate abortOlderPatchsets buildLabel assertOwnNode buildOwner)
 
 failed=0
 for step in "${STEPS[@]}"; do
@@ -30,6 +31,9 @@ for jenkinsfile in "${REPO_ROOT}"/jobs/*/Jenkinsfile; do
         || problems+=("pipeline isn't 'agent none' (Approval would hold a node)")
     grep -qE "^ +approvalGate\((allowCentralBuilds: true)?\)$" "$jenkinsfile" \
         || problems+=("no Approval stage calling approvalGate()")
+    grep -A1 -E "^ +approvalGate\((allowCentralBuilds: true)?\)$" "$jenkinsfile" \
+            | grep -qE "^ +abortOlderPatchsets\(\)$" \
+        || problems+=("Approval stage doesn't call abortOlderPatchsets() right after approvalGate()")
     grep -q "agent { label buildLabel() }" "$jenkinsfile" \
         || problems+=("build stage doesn't run on buildLabel()")
     grep -q "currentBuild.description = assertOwnNode()" "$jenkinsfile" \
