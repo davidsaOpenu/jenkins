@@ -207,8 +207,8 @@ Gerrit trigger watches, not the extra repos a job merely clones:
 | `xv6` | `xv6-24.04-vm` — no script; its tools (QEMU, netstat, ssh) come with the simulator's | GerritHub `master` |
 
 The list is read from `jobs/*/Jenkinsfile`, so a new job's repo is picked
-up on the next run. Each script runs with `SUDO_USER=jenkins`, from a
-clone in `/var/cache/central_deploy/repos/<repo>` (root's — a script that
+up on the next run. Each script runs as root with `SUDO_USER=jenkins`
+(see below — not sudo for `jenkins`), from a clone in `/var/cache/central_deploy/repos/<repo>` (root's — a script that
 runs as root never comes from a directory `jenkins` can write), before
 Jenkins restarts, so the groups it adds are the service's from its first
 build. A repo with no `1_install_prereqs.sh` is skipped with a warning; a
@@ -221,6 +221,36 @@ so both share `jenkins`'s `~/.vagrant.d`), rsync, git-review, Python YAML,
 and docker for `periodic-tasks`. Jenkins itself (Java, plugins, nginx)
 stays the role's. See `SECURITY_NOTES.md` for what the `docker`,
 `libvirt` and `kvm` memberships imply.
+
+**The `jenkins` user never gets sudo from this.** The scripts run as root
+— the deploy is run by root or a sudo-capable admin, never by `jenkins` —
+and `SUDO_USER=jenkins` only names the account they install *for*. Since
+anything that runs as `jenkins` (any build) must be assumed hostile, the
+deploy also:
+
+- refuses to run a script that `jenkins` could write, or that sits under
+  a directory it could write (a checkout inside a Jenkins workspace);
+- logs each script's path, SHA-256 and commit before running it, to
+  compare against the reviewed commit — a recovery runs as root whatever
+  is on those repos' `master`;
+- on every deploy, fails if `jenkins` is in a group outside
+  `jenkins_allowed_groups` (default `jenkins docker libvirt kvm`; compared
+  by GID, so Ubuntu's `libvirtd` alias passes) or has any sudo rule other
+  than the zero-argument `/opt/ci/<script>.sh ""` ones. It reports, never
+  fixes: remove the extra group with `gpasswd -d jenkins <group>` (e.g.
+  `shadow`, which only the old PAM login needed). As jobs stop needing
+  `docker` and `libvirt`, drop them from the list, and the deploy then
+  refuses any script that adds them back.
+
+A script must do what it does in the user's home *as that user* (`sudo -u
+"$SUDO_USER" …`), never as root: root following a symlink `jenkins`
+planted there hands it the target (see `SECURITY_NOTES.md`,
+`register_central_key.sh`).
+
+The `jenkins` job's `scripts/run.sh` also needs the zero-argument sudo
+rules for `/opt/ci` — installed separately, by the reviewed one-time
+`scripts/sudo/deploy_gerrit_multi_user_push.sh`, never by a prereqs
+script.
 
 Pipelines that call Jenkins' internal API (e.g. `periodic-tasks`) need
 their methods approved once in Manage Jenkins → In-process Script Approval

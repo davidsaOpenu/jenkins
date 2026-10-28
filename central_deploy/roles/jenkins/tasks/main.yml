@@ -431,6 +431,48 @@
     label: "{{ repo_prereq.name }}"
   tags: install
 
+# Every deploy, whatever ran above: jenkins runs any build's code, so it
+# gets nothing beyond what the jobs need — the hardening path only
+# narrows this. Fails (never silently fixes) on:
+# - a group outside jenkins_allowed_groups (sudo/wheel/adm/shadow/disk…);
+# - a sudo rule other than the zero-argument /opt/ci ones
+#   scripts/sudo/deploy_gerrit_multi_user_push.sh installs for run.sh.
+- name: Check the jenkins user's groups and sudo rights
+  ansible.builtin.shell: |
+    set -eu
+    # By GID: one group can carry two names (Ubuntu's libvirt/libvirtd).
+    allowed=" "
+    for name in {{ jenkins_allowed_groups | join(' ') }}; do
+        allowed="$allowed$(getent group "$name" | cut -d: -f3) "
+    done
+    bad=""
+    for gid in $(id -G jenkins); do
+        case "$allowed" in
+            *" $gid "*) ;;
+            *) bad="$bad $(getent group "$gid" | cut -d: -f1)" ;;
+        esac
+    done
+    if [ -n "$bad" ]; then
+        echo "jenkins is in group(s) it must not be in:$bad (remove: gpasswd -d jenkins <group>)" >&2
+        exit 1
+    fi
+    command -v sudo >/dev/null || exit 0
+    # One command per line after "may run the following commands"; only
+    # `(root) NOPASSWD: /opt/ci/<name>.sh ""` may appear.
+    sudo -n -l -U jenkins 2>&1 | awk '
+        /may run the following commands/ { rules = 1; next }
+        rules && NF {
+            line = $0
+            sub(/^[ \t]+/, "", line)
+            if (line !~ /^\(root\) NOPASSWD: \/opt\/ci\/[A-Za-z0-9_.-]+\.sh ""$/) {
+                print "jenkins has a sudo rule it must not have: " line > "/dev/stderr"
+                bad = 1
+            }
+        }
+        END { exit bad }'
+  changed_when: false
+  tags: install
+
 # Unconditional restart, not started: every config file above is already
 # on disk by this point, whether this is a first deploy (nothing running
 # yet — systemd just starts it) or a redeploy against a long-lived VM

@@ -1,10 +1,11 @@
 ---
-# One job's main repo (repo_prereq): run its 1_install_prereqs.sh, so the
-# built-in node can build that job — for the jenkins user (SUDO_USER, the
-# scripts' "invoking user"). From the deploying checkout (path) or a fresh
-# clone of its branch (url). The clone is root's, never writable by
-# jenkins: the script runs as root. A repo without the script is skipped
-with a warning (xv6: the simulator's script covers what its job needs).
+# One job's main repo (repo_prereq): run its 1_install_prereqs.sh as root,
+# so the built-in node can build that job. SUDO_USER=jenkins only names the
+# account the script installs for (the scripts' "invoking user") — jenkins
+# gets no sudo; main.yml checks that afterwards. From the deploying
+# checkout (path) or a fresh clone of its branch (url) into a root-owned
+# directory. A repo without the script is skipped with a warning (xv6: the
+# simulator's script covers what its job needs).
 - name: "Clone {{ repo_prereq.name }} for its prerequisites"
   ansible.builtin.git:
     repo: "{{ repo_prereq.url }}"
@@ -22,6 +23,7 @@ with a warning (xv6: the simulator's script covers what its job needs).
 - name: "Find {{ repo_prereq.name }}'s 1_install_prereqs.sh"
   ansible.builtin.stat:
     path: "{{ repo_prereq.path | default(repo_prereqs_dir ~ '/' ~ repo_prereq.name) }}/1_install_prereqs.sh"
+    checksum_algorithm: sha256
   register: repo_prereq_script
   tags: install
 
@@ -29,6 +31,38 @@ with a warning (xv6: the simulator's script covers what its job needs).
   ansible.builtin.debug:
     msg: "WARNING: {{ repo_prereq.name }} has no 1_install_prereqs.sh — nothing installed for its jobs."
   when: not repo_prereq_script.stat.exists
+  tags: install
+
+# Root runs it: if jenkins could write the script or any directory above
+# it (a checkout inside a Jenkins workspace), any build could swap in its
+# own code for the next deploy to run as root. Same rule as
+# scripts/sudo/deploy_gerrit_multi_user_push.sh.
+- name: "Refuse {{ repo_prereq.name }}'s 1_install_prereqs.sh if jenkins can write it or a directory above it"
+  ansible.builtin.shell: |
+    p={{ repo_prereq_script.stat.path | quote }}
+    while :; do
+        if runuser -u jenkins -- test -w "$p"; then
+            echo "jenkins can write $p — deploy from a checkout jenkins can't modify" >&2
+            exit 1
+        fi
+        [ "$p" = / ] && break
+        p=$(dirname "$p")
+    done
+  changed_when: false
+  when: repo_prereq_script.stat.exists
+  tags: install
+
+# What is about to run as root, for the log: compare with the reviewed
+# commit (`git show <commit>:1_install_prereqs.sh | sha256sum`). Clone
+# commit from the git module; no git as root in a checkout that isn't
+# root's (core.fsmonitor and friends run code).
+- name: "Running {{ repo_prereq.name }}'s 1_install_prereqs.sh as root"
+  ansible.builtin.debug:
+    msg: >-
+      {{ repo_prereq_script.stat.path }}
+      sha256 {{ repo_prereq_script.stat.checksum }}
+      {{ ('commit ' ~ repo_prereq_clone.after) if repo_prereq.url is defined else '(deploying checkout)' }}
+  when: repo_prereq_script.stat.exists
   tags: install
 
 - name: "Run {{ repo_prereq.name }}'s 1_install_prereqs.sh"
