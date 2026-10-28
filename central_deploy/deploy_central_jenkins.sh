@@ -2,7 +2,8 @@
 # Installs central Jenkins + the dummy job + Gerrit wiring. Normally run
 # via setup_central.sh (which prepares the machine first); runnable on its
 # own on an already-prepared one. Usage: sudo ./deploy_central_jenkins.sh
-# <path-to-gerrit_central.yml>. Always verifies the Gerrit Trigger plugin
+# <path-to-gerrit_central.yml> [--with-repo-jobs] (the jobs' prerequisites,
+# see write_repo_prereqs_vars). Always verifies the Gerrit Trigger plugin
 # is connected to GerritHub; with email/display_name/change_id set (as CI
 # sets them) also verifies end-to-end via a real Gerrit push.
 #
@@ -20,12 +21,23 @@ source "${SCRIPT_DIR}/central_lib.sh"
 # Broken proxy env — see run_common.sh for why. Strip it.
 unset http_proxy https_proxy ftp_proxy all_proxy HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY
 
+usage() {
+    echo "Usage: sudo ./deploy_central_jenkins.sh <path-to-gerrit_central.yml> [--with-repo-jobs]" >&2
+    exit 1
+}
+
 parse_args() {
-    if [[ $# -ne 1 ]]; then
-        echo "Usage: sudo ./deploy_central_jenkins.sh <path-to-gerrit_central.yml>" >&2
-        exit 1
-    fi
-    ACCOUNTS_FILE="$1"
+    ACCOUNTS_FILE=""
+    REPO_JOBS=false
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --with-repo-jobs) REPO_JOBS=true ;;
+            -*) usage ;;
+            *) [[ -z "$ACCOUNTS_FILE" ]] || usage; ACCOUNTS_FILE="$arg" ;;
+        esac
+    done
+    [[ -n "$ACCOUNTS_FILE" ]] || usage
     [[ -f "$ACCOUNTS_FILE" ]] || { echo "✗ Not found: $ACCOUNTS_FILE" >&2; exit 1; }
 }
 
@@ -142,6 +154,30 @@ ensure_admin_password() {
     CENTRAL_JENKINS_ADMIN_PASSWORD="$(cat "$GENERATED_ADMIN_PASSWORD_FILE")"
 }
 
+# --with-repo-jobs: the role runs each job's main repo's
+# 1_install_prereqs.sh (roles/jenkins/tasks/repo_prereqs.yml). This repo's
+# own from this checkout — the one whose jobs/ are being deployed; every
+# other one from its GerritHub master, the branch its job builds by
+# default. Prints the vars file's path.
+write_repo_prereqs_vars() {
+    local dst="${WORKDIR}/repo_prereqs.yml"
+    local projects
+    mapfile -t projects < <(job_main_repos "$REPO_ROOT")
+    python3 - "$dst" "$REPO_ROOT" "$GERRIT_SERVER_NAME" "${projects[@]}" <<'PYEOF'
+import sys, yaml
+dst, repo_root, server = sys.argv[1:4]
+repos = []
+for project in sys.argv[4:]:
+    name = project.split('/')[-1]
+    if project == 'davidsaOpenu/jenkins':
+        repos.append({'name': name, 'path': repo_root})
+    else:
+        repos.append({'name': name, 'url': f'https://{server}/{project}', 'branch': 'master'})
+yaml.safe_dump({'repo_prereqs': repos}, open(dst, 'w'))
+PYEOF
+    echo "$dst"
+}
+
 run_deploy() {
     echo "→ Loading ${ACCOUNTS_FILE}..."
     load_central_account "$ACCOUNTS_FILE"
@@ -181,6 +217,9 @@ yaml.safe_dump({
 PYEOF
 
     local extra_vars=(-e "@${ACCOUNTS_FILE}" -e "@${key_vars_file}" -e "dr_test_jenkinsfile_src=${REPO_ROOT}/jobs/jenkins-dr-test/Jenkinsfile" -e "osw_ci_lib_src=${REPO_ROOT}/vars")
+    if [[ "$REPO_JOBS" == true ]]; then
+        extra_vars+=(-e "@$(write_repo_prereqs_vars)")
+    fi
     ansible-playbook -i "localhost," -c local -b \
         "${extra_vars[@]}" \
         "${REPO_ROOT}/central_deploy/deploy_jenkins.yml"

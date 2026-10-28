@@ -16,7 +16,10 @@
 #      locations still proxying to that port. Anything this repo installed
 #      carries a marker and is never touched;
 #   4. opens jenkins_url's port in ufw / firewalld, if one is active;
-#   5. deploy_central_jenkins.sh — install, configure, verify;
+#   5. deploy_central_jenkins.sh — install, configure, verify; with
+#      --with-repo-jobs also runs, before Jenkins (re)starts, the
+#      1_install_prereqs.sh of every job's main repo (the one its Gerrit
+#      trigger watches), so the built-in node can build them;
 #   6. with --with-repo-jobs (disaster recovery only — CI never passes it):
 #      create_repo_jobs.sh — one pipeline job per jobs/<name>/Jenkinsfile.
 # Safe to re-run.
@@ -232,7 +235,11 @@ main() {
     open_firewall
 
     title "Install and verify (deploy_central_jenkins.sh)"
-    "${SCRIPT_DIR}/deploy_central_jenkins.sh" "$ACCOUNTS_FILE"
+    if [[ "$REPO_JOBS" == true ]]; then
+        "${SCRIPT_DIR}/deploy_central_jenkins.sh" "$ACCOUNTS_FILE" --with-repo-jobs
+    else
+        "${SCRIPT_DIR}/deploy_central_jenkins.sh" "$ACCOUNTS_FILE"
+    fi
 
     if [[ "$REPO_JOBS" == true ]]; then
         title "Jobs from this repo (create_repo_jobs.sh)"

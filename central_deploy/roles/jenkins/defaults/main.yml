@@ -20,6 +20,13 @@ jenkins_listen_port: 443
 # jenkins_listen_port (shared with other apps) instead of adding its own —
 # see nginx_shared_server.py.
 nginx_shared_server: false
+# The jobs' main repos whose 1_install_prereqs.sh the deploy runs
+# (tasks/repo_prereqs.yml): each {name, url, branch} to clone, or {name,
+# path} for a checkout already on disk. deploy_central_jenkins.sh
+# --with-repo-jobs fills it from jobs/*/Jenkinsfile; empty (CI) = none.
+repo_prereqs: []
+# Root-owned: the scripts in these clones run as root.
+repo_prereqs_dir: /var/cache/central_deploy/repos
 # Pins jenkins-plugin-manager, used to pre-install plugins before Jenkins'
 # first boot (so JCasC's authorizationStrategy is active from boot one,
 # instead of leaving a window where Jenkins runs unsecured).

@@ -87,8 +87,9 @@ Both flags are optional:
 - `--replace-old-jenkins` — only needed on a machine that runs (or ran) a
   hand-made Jenkins; harmless otherwise. Without it, leftovers make the
   install stop with a message.
-- `--with-repo-jobs` — creates the real CI jobs (see "Jobs"). Without it
-  you get Jenkins with just the `jenkins-dr-test` job.
+- `--with-repo-jobs` — installs what the real CI jobs need on this
+  machine and creates the jobs (see "Jobs"). Without it you get Jenkins
+  with just the `jenkins-dr-test` job.
 
 It never prompts, so it can run unattended. Takes several minutes on a
 fresh machine. Safe to re-run any time — to reapply config, after fixing a
@@ -124,6 +125,8 @@ problem, or to recover.
    reports it is **connected to GerritHub** — only then prints success.
    With `email`/`display_name`/`change_id` set it also pushes a real
    patchset and waits for the `jenkins-dr-test` job to build it.
+   With `--with-repo-jobs`, before Jenkins (re)starts, it also runs each
+   job's `1_install_prereqs.sh` — see "What the jobs need".
 6. With `--with-repo-jobs` only: runs `create_repo_jobs.sh` — see "Jobs".
 
 Every nginx file it edits is backed up first (`<file>.bak-<timestamp>`),
@@ -180,13 +183,45 @@ runs it. It can also be run on its own on a deployed Jenkins:
 - Re-running is safe: jobs already pointing at the right Jenkinsfile, with
   triggers registered, are left alone.
 
-What the jobs need from the machine — central's own builds (the daily
-timer, admin-started ones, and changes uploaded by the service account)
-run on the built-in node as the `jenkins` user; students' changes run on
-their own nodes instead (`SETUP_STUDENTS.md`). The built-in node needs
-the tools their Jenkinsfiles call (e.g. docker,
-vagrant/libvirt for the VM-based ones) and the matching group memberships
-for `jenkins` (see `SECURITY_NOTES.md` for what those memberships imply).
+### What the jobs need
+
+Central's own builds (the daily timer, admin-started ones, and changes
+uploaded by the service account) run on the built-in node as the
+`jenkins` user — and so does a student's change when their own node
+isn't connected (`SETUP_STUDENTS.md`). So the built-in node needs what
+the jobs' scripts call.
+
+Each project says what it needs itself, in a **`1_install_prereqs.sh`**
+at the root of its repository: run as root, installs for the invoking
+user (`SUDO_USER`) — packages, group memberships, per-user setup such as
+vagrant plugins. Supported distributions are each script's own choice
+(see its `case "$OS_ID"`). With `--with-repo-jobs`, the deploy runs the
+one of every job's **main repo** — the GerritHub project its Jenkinsfile's
+Gerrit trigger watches, not the extra repos a job merely clones:
+
+| Main repo | Jobs | Runs from |
+|---|---|---|
+| `jenkins` (this repo) | `jenkins`, plus `periodic-tasks` (no trigger, same needs: docker) | this checkout |
+| `simulator` | `simulator-docker-ng-infra` | GerritHub `master` |
+| `swiftacular` | `swiftacular`, `swiftacular-podified`, `swiftacular-presentations` | GerritHub `master` |
+| `xv6` | `xv6-24.04-vm` — no script; its tools (QEMU, netstat, ssh) come with the simulator's | GerritHub `master` |
+
+The list is read from `jobs/*/Jenkinsfile`, so a new job's repo is picked
+up on the next run. Each script runs with `SUDO_USER=jenkins`, from a
+clone in `/var/cache/central_deploy/repos/<repo>` (root's — a script that
+runs as root never comes from a directory `jenkins` can write), before
+Jenkins restarts, so the groups it adds are the service's from its first
+build. A repo with no `1_install_prereqs.sh` is skipped with a warning; a
+script that fails stops the deploy. Re-running is safe as long as the
+scripts are (each must be).
+
+This repo's script covers only what its own jobs run: vagrant-libvirt VMs
+for `scripts/run.sh` (with the same vagrant plugin pins as swiftacular's,
+so both share `jenkins`'s `~/.vagrant.d`), rsync, git-review, Python YAML,
+and docker for `periodic-tasks`. Jenkins itself (Java, plugins, nginx)
+stays the role's. See `SECURITY_NOTES.md` for what the `docker`,
+`libvirt` and `kvm` memberships imply.
+
 Pipelines that call Jenkins' internal API (e.g. `periodic-tasks`) need
 their methods approved once in Manage Jenkins → In-process Script Approval
 after their first real run.

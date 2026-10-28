@@ -57,6 +57,20 @@ install_prereqs() {
     fi
 }
 
+# The GerritHub project each job is triggered by (its main repo) — the
+# first project-level `pattern: '<owner>/<repo>'` in jobs/<name>/Jenkinsfile
+# (file-path patterns carry a `*`, so never match) — one per line, each
+# once. Jobs with no Gerrit trigger (periodic-tasks) have none;
+# jenkins-dr-test is CI's own test job, not a real one.
+job_main_repos() {
+    local repo_root="$1" jenkinsfile
+    for jenkinsfile in "${repo_root}"/jobs/*/Jenkinsfile; do
+        [[ "$(basename "$(dirname "$jenkinsfile")")" == jenkins-dr-test ]] && continue
+        grep -oE "^ +pattern: '[A-Za-z0-9._-]+/[A-Za-z0-9._-]+'" "$jenkinsfile" \
+            | head -1 | sed -E "s/^ +pattern: '(.*)'$/\1/"
+    done | sort -u
+}
+
 detect_public_ip() {
     local ip
     ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')

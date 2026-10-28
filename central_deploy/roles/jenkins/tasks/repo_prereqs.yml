@@ -1,0 +1,48 @@
+---
+# One job's main repo (repo_prereq): run its 1_install_prereqs.sh, so the
+# built-in node can build that job — for the jenkins user (SUDO_USER, the
+# scripts' "invoking user"). From the deploying checkout (path) or a fresh
+# clone of its branch (url). The clone is root's, never writable by
+# jenkins: the script runs as root. A repo without the script is skipped
+with a warning (xv6: the simulator's script covers what its job needs).
+- name: "Clone {{ repo_prereq.name }} for its prerequisites"
+  ansible.builtin.git:
+    repo: "{{ repo_prereq.url }}"
+    dest: "{{ repo_prereqs_dir }}/{{ repo_prereq.name }}"
+    version: "{{ repo_prereq.branch }}"
+    depth: 1
+    force: true
+  register: repo_prereq_clone
+  until: repo_prereq_clone is succeeded
+  retries: 3
+  delay: 10
+  when: repo_prereq.url is defined
+  tags: install
+
+- name: "Find {{ repo_prereq.name }}'s 1_install_prereqs.sh"
+  ansible.builtin.stat:
+    path: "{{ repo_prereq.path | default(repo_prereqs_dir ~ '/' ~ repo_prereq.name) }}/1_install_prereqs.sh"
+  register: repo_prereq_script
+  tags: install
+
+- name: "No 1_install_prereqs.sh in {{ repo_prereq.name }} — skipped"
+  ansible.builtin.debug:
+    msg: "WARNING: {{ repo_prereq.name }} has no 1_install_prereqs.sh — nothing installed for its jobs."
+  when: not repo_prereq_script.stat.exists
+  tags: install
+
+- name: "Run {{ repo_prereq.name }}'s 1_install_prereqs.sh"
+  ansible.builtin.command:
+    cmd: bash ./1_install_prereqs.sh
+    chdir: "{{ repo_prereq_script.stat.path | dirname }}"
+  environment:
+    SUDO_USER: jenkins
+  register: repo_prereq_run
+  when: repo_prereq_script.stat.exists
+  tags: install
+
+- name: "{{ repo_prereq.name }}'s 1_install_prereqs.sh output"
+  ansible.builtin.debug:
+    var: repo_prereq_run.stdout_lines
+  when: repo_prereq_script.stat.exists
+  tags: install

@@ -409,6 +409,28 @@
   no_log: true
   tags: configure
 
+# setup_central.sh --with-repo-jobs only: what the jobs' own scripts need
+# on the built-in node — each job's main repo's 1_install_prereqs.sh.
+# Before the restart below, so group memberships they add (docker, kvm,
+# libvirt) are the jenkins service's from its first build.
+- name: Create the directory for the jobs' repos
+  ansible.builtin.file:
+    path: "{{ repo_prereqs_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: repo_prereqs | length > 0
+  tags: install
+
+- name: Install each job's prerequisites (1_install_prereqs.sh)
+  ansible.builtin.include_tasks: repo_prereqs.yml
+  loop: "{{ repo_prereqs }}"
+  loop_control:
+    loop_var: repo_prereq
+    label: "{{ repo_prereq.name }}"
+  tags: install
+
 # Unconditional restart, not started: every config file above is already
 # on disk by this point, whether this is a first deploy (nothing running
 # yet — systemd just starts it) or a redeploy against a long-lived VM
