@@ -8,9 +8,12 @@
 #   sudo ./1_install_prereqs.sh
 #
 # Installs for the invoking user (SUDO_USER): vagrant plugins in their
-# ~/.vagrant.d, membership in the libvirt, kvm and docker groups. Disaster
-# recovery (setup_central.sh --with-repo-jobs) runs it with
-# SUDO_USER=jenkins. Safe to re-run.
+# ~/.vagrant.d, membership in the libvirt, kvm and docker groups — never
+# sudo rights. Disaster recovery (setup_central.sh --with-repo-jobs) runs it
+# as root with SUDO_USER=jenkins: that only names the account, which gets
+# no sudo. Everything done in that user's home runs as that user, never as
+# root (root following a symlink the user planted there = root for them).
+# Safe to re-run.
 set -euo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then

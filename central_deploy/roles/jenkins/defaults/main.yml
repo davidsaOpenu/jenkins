@@ -27,6 +27,11 @@ nginx_shared_server: false
 repo_prereqs: []
 # Root-owned: the scripts in these clones run as root.
 repo_prereqs_dir: /var/cache/central_deploy/repos
+# The only groups the jenkins user may be in — the deploy fails otherwise
+# (tasks/main.yml). What the jobs' scripts need today; docker (root-
+# equivalent) and libvirt (near it) go once the jobs stop needing them
+# (SECURITY_NOTES.md), and the deploy then refuses a script re-adding them.
+jenkins_allowed_groups: [jenkins, docker, libvirt, kvm]
 # Pins jenkins-plugin-manager, used to pre-install plugins before Jenkins'
 # first boot (so JCasC's authorizationStrategy is active from boot one,
 # instead of leaving a window where Jenkins runs unsecured).
