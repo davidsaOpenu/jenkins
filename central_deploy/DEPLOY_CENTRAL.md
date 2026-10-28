@@ -157,9 +157,87 @@ the browser doesn't know who issued it. Either:
   → Always Trust; Ubuntu Chrome: Settings → Privacy and security →
   Security → Manage certificates → Authorities → Import. Restart the
   browser.
-- **Or use a real certificate**: these are issued for a DNS name, not a
-  bare IP — get a name (and a certificate, e.g. from IT or Let's Encrypt)
-  for the machine, set `tls_cert_file`/`tls_key_file`, re-run.
+- **Or use a real certificate** — see "Switching to a real certificate".
+  Then no computer needs anything imported.
+
+### Switching to a real certificate
+
+Certificate authorities issue certificates for a **DNS name**, not a bare
+IP. So the machine needs a name first, and Jenkins' URL becomes that name.
+
+1. **Get a name and a certificate.**
+   - The name: ask IT for a DNS record pointing at the machine (e.g.
+     `jenkins.cslab.example.ac.il` → `192.114.0.189`). Check it from a
+     student's network: `getent hosts <name>`.
+   - The certificate, for exactly that name — either:
+     - **From IT** (universities usually have a CA contract): send them a
+       request made on the machine; the key never leaves it:
+
+           sudo install -d -m 700 /etc/jenkins-tls
+           sudo openssl req -new -newkey rsa:2048 -nodes \
+               -keyout /etc/jenkins-tls/jenkins.key -out /etc/jenkins-tls/jenkins.csr \
+               -subj "/CN=<name>" -addext "subjectAltName=DNS:<name>"
+           sudo chmod 600 /etc/jenkins-tls/jenkins.key
+
+       Save what comes back as `/etc/jenkins-tls/jenkins.crt`, **with the
+       intermediate certificates appended** after the machine's own (the
+       "full chain" — nginx sends this one file, and browsers reject a
+       missing intermediate).
+     - **From Let's Encrypt** (free, renews itself): only if the name is
+       reachable from the internet — its check connects to port 80 (or
+       uses a DNS record, with `--preferred-challenges dns`). E.g. with
+       `certbot certonly --standalone -d <name>` (stop anything on port
+       80 while it runs); the files are then
+       `/etc/letsencrypt/live/<name>/fullchain.pem` and `privkey.pem`.
+   - Before going on, check the pair matches and covers the name:
+
+         sudo openssl x509 -in <cert> -noout -subject -enddate -ext subjectAltName
+         [ "$(sudo openssl x509 -in <cert> -noout -pubkey)" = \
+           "$(sudo openssl pkey -in <key> -pubout)" ] && echo "key matches"
+
+2. **Point the config at them** — `gerrit_central.yml`:
+
+       jenkins_url: "https://<name>:8080/jenkins"   # same port and path as before
+       tls_cert_file: "/etc/jenkins-tls/jenkins.crt"   # or …/fullchain.pem
+       tls_key_file: "/etc/jenkins-tls/jenkins.key"    # or …/privkey.pem
+
+3. **Move the self-signed pair aside**, so nothing hands it out any more
+   (`setup_students.sh` embeds it in every student's file while it is
+   there, and a student's agent would then trust *only* it):
+
+       sudo mv /etc/jenkins-dr/tls /etc/jenkins-dr/tls.self-signed.old
+
+4. **Re-run the deploy** (restarts Jenkins — pick a quiet moment):
+
+       sudo ./central_deploy/setup_central.sh central_deploy/gerrit_central.yml
+
+   Open `https://<name>:8080/jenkins`: a padlock, no warning. The old
+   `https://192.114.0.189:8080/jenkins` now warns instead (the
+   certificate names `<name>`, not the IP) — use the name everywhere.
+
+5. **Students**: their agents still point at the old URL and trust the
+   old certificate. Re-run `setup_students.sh` with the new URL
+   (`JENKINS_URL=https://<name>:8080/jenkins`); it writes each student a
+   new `students_secrets/<name>.secrets.yml` — new `central_url`, no
+   certificate in it, same password and agent secret. Send them; each
+   student re-runs `sudo ./student_deploy/deploy_agent.sh
+   student_deploy/secrets.yml`. Their node reconnects; their builds
+   meanwhile go to the built-in node, as for any disconnected node.
+
+**Renewals.** The deploy *copies* the certificate and key into
+`/etc/nginx/tls/` (`jenkins.crt`, `jenkins.key`), so a renewed
+certificate is only served once copied there again and nginx reloaded —
+no Jenkins restart, no re-deploy:
+
+    sudo install -m 644 <cert> /etc/nginx/tls/jenkins.crt
+    sudo install -m 600 <key>  /etc/nginx/tls/jenkins.key
+    sudo nginx -t && sudo systemctl reload nginx
+
+With Let's Encrypt, have certbot do it on every renewal: save those
+three lines (with the `live/<name>/` paths) as an executable
+`/etc/letsencrypt/renewal-hooks/deploy/jenkins-nginx.sh`. Certificates
+from IT usually last a year: put the end date (from the check in step 1)
+in a calendar. Students' agents need nothing on renewal.
 
 ## Jobs (`--with-repo-jobs`)
 
@@ -303,7 +381,7 @@ The scripts stop at the first problem with a `✗` line saying what's wrong:
 | `… ended before the pipeline started — its Jenkinsfile couldn't be loaded` (jobs) | The printed log says why — usually the repo/branch/`jobs/<name>/Jenkinsfile` isn't reachable or doesn't parse. |
 | `⚠ <job>: no triggers registered` (jobs) | That Jenkinsfile defines no `triggers {}` — fine if intended; otherwise check it. |
 | Works on the machine, not from outside | `jenkins_url`'s port isn't forwarded to this machine (see "Before you start"). Locally: `curl -skI https://127.0.0.1:<port><prefix>/login -H 'Host: <host>'` should give 200. |
-| Browser: "Not secure", https crossed out | Self-signed certificate — see "Browser says Not secure". |
+| Browser: "Not secure", https crossed out | Self-signed certificate — see "Browser says Not secure". With a real certificate: opened by IP instead of the name, or the intermediate certificates missing from `tls_cert_file`, or it expired and the renewal wasn't copied to `/etc/nginx/tls/` (see "Switching to a real certificate"). |
 
 Useful checks: `systemctl status jenkins nginx`, `sudo ss -ltnp`,
 `sudo nginx -t`.
@@ -315,7 +393,8 @@ Useful checks: `systemctl status jenkins nginx`, `sudo ss -ltnp`,
 | `/var/lib/jenkins` | Jenkins home (jobs, builds, JCasC in `casc_configs/`). An old one moved aside: `/var/lib/jenkins.old-<date>`. |
 | `/etc/systemd/system/jenkins.service` | The Jenkins service (`sudo systemctl restart jenkins`). |
 | `/etc/jenkins-dr/admin_password` | Generated admin password (root-only). |
-| `/etc/jenkins-dr/tls/` | Self-signed certificate and key. |
+| `/etc/jenkins-dr/tls/` | Self-signed certificate and key (moved aside when switching to a real certificate). |
+| `/etc/nginx/tls/` | The certificate and key nginx serves — a copy, made at deploy time, of the self-signed pair or of `tls_cert_file`/`tls_key_file`. |
 | `/root/.ssh/<ssh_key_name>` | The GerritHub SSH key (also copied into Jenkins). |
 | `/etc/nginx/snippets/jenkins-dr-*.conf` | Jenkins' nginx location and TLS settings. |
 | `/etc/nginx/conf.d/jenkins.conf` | Jenkins' own nginx server (not with `nginx_shared_server`). |
