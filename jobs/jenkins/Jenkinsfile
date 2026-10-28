@@ -86,22 +86,17 @@ pipeline {
                 script {
                     currentBuild.description = assertOwnNode()
                     if (env.GERRIT_CHANGE_ID) {
-                        // Gerrit builds: job-global + Change-ID specific lock
-                        lock(resource: "job-${env.JOB_NAME}") {
-                            lock(resource: "gerrit-${env.GERRIT_CHANGE_ID}", inversePrecedence: true) {
-                                echo "Acquired locks: job=${env.JOB_NAME}, change=${env.GERRIT_CHANGE_ID}"
-                                timeout(time: 220, unit: 'MINUTES') {
-                                    runPipeline()
-                                }
-                            }
-                        }
-                    } else {
-                        // Non-Gerrit builds: only global lock
-                        lock(resource: "job-${env.JOB_NAME}") {
-                            echo "Acquired lock: job=${env.JOB_NAME} (non-Gerrit build)"
+                        // Gerrit builds: Change-ID specific lock (one executor per node already serializes the node)
+                        lock(resource: "gerrit-${env.GERRIT_CHANGE_ID}", inversePrecedence: true) {
+                            echo "Acquired lock: change=${env.GERRIT_CHANGE_ID}"
                             timeout(time: 220, unit: 'MINUTES') {
                                 runPipeline()
                             }
+                        }
+                    } else {
+                        // Non-Gerrit builds: no lock
+                        timeout(time: 220, unit: 'MINUTES') {
+                            runPipeline()
                         }
                     }
                 }
