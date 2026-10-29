@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 # Sets up all student users and nodes on the central Jenkins. Usage:
-# ./setup_students.sh [students.yaml] [creds_output.yaml] — asks for the
-# Jenkins URL and admin login (see jenkins_connection.sh for the CI form).
+# ./setup_students.sh [--from <you@gmail.com>] [--resend-all] [--no-email]
+#                     [--emails <emails.txt>] [students.yaml] [creds_output.yaml]
+# — asks for the Jenkins URL and admin login (see jenkins_connection.sh for
+# the CI form).
+#
+# Email (on with the default students.yaml when emails.txt exists, or with
+# --emails): first adds the students of emails.txt missing from
+# students.yaml (find_gerrit_user.sh --update), then, after provisioning,
+# emails each student their secrets file unless students_secrets/sent.log
+# shows that exact file already went to that address — so only new (or
+# changed) students get mail. --resend-all mails everyone again. Sender:
+# --from or $STUDENTS_EMAIL_FROM, else asked for.
 set -euo pipefail
 
 # Broken proxy env — see run_common.sh for why. Strip it.
@@ -13,11 +23,77 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 source "${SCRIPT_DIR}/jenkins_connection.sh"
 
+usage() { sed -n '2,4p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+
 parse_args() {
-    CONFIG="${1:-${SCRIPT_DIR}/students.yaml}"
-    CREDS_FILE="${2:-${SCRIPT_DIR}/students_credentials.yaml}"
-    [[ -f "$CONFIG" ]] || { err "config not found: $CONFIG"; hint "Copy students.yaml.example to students.yaml and fill it in."; exit 1; }
+    local positional=() no_email=""
+    EMAILS_FILE="" EMAIL_FROM="${STUDENTS_EMAIL_FROM:-}" RESEND_ALL=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --from)       [[ $# -ge 2 ]] || usage; EMAIL_FROM="$2"; shift 2 ;;
+            --emails)     [[ $# -ge 2 ]] || usage; EMAILS_FILE="$2"; shift 2 ;;
+            --resend-all) RESEND_ALL=1; shift ;;
+            --no-email)   no_email=1; shift ;;
+            -h|--help)    usage ;;
+            -*)           err "unknown option: $1"; usage ;;
+            *)            positional+=("$1"); shift ;;
+        esac
+    done
+    [[ ${#positional[@]} -le 2 ]] || usage
+    CONFIG="${positional[0]:-${SCRIPT_DIR}/students.yaml}"
+    CREDS_FILE="${positional[1]:-${SCRIPT_DIR}/students_credentials.yaml}"
+
+    # Email only for the main roster by default: a one-off students_alice.yaml
+    # (SETUP_STUDENTS.md "Passwords") must not get all of emails.txt added.
+    if [[ -z "$EMAILS_FILE" && ${#positional[@]} -eq 0 && -f "${SCRIPT_DIR}/emails.txt" ]]; then
+        EMAILS_FILE="${SCRIPT_DIR}/emails.txt"
+    fi
+    [[ -z "$no_email" ]] || EMAILS_FILE=""
+    if [[ -n "$EMAILS_FILE" ]]; then
+        [[ -r "$EMAILS_FILE" ]] || { err "cannot read $EMAILS_FILE"; exit 1; }
+    elif [[ -n "$RESEND_ALL" ]]; then
+        err "--resend-all needs emails to send: drop --no-email, or give --emails <file>"; exit 1
+    fi
+
+    # Without --emails a missing roster is still an error; with it,
+    # find_gerrit_user.sh creates it.
+    [[ -f "$CONFIG" || -n "$EMAILS_FILE" ]] || { err "config not found: $CONFIG"; hint "Copy students.yaml.example to students.yaml and fill it in, or list emails in emails.txt."; exit 1; }
     python3 -c "import yaml" 2>/dev/null || { err "pyyaml required — run: pip install pyyaml"; exit 1; }
+}
+
+# Asked before anything changes, so a run doesn't stop halfway for it.
+load_email_sender() {
+    [[ -n "$EMAILS_FILE" ]] || return 0
+    [[ -n "$EMAIL_FROM" ]] || read -rp "Send students' secrets from (your Gmail address): " EMAIL_FROM || true
+    [[ -n "$EMAIL_FROM" ]] \
+        || { err "an email sender is required — type it when asked, or pass --from / set STUDENTS_EMAIL_FROM (or --no-email to skip emailing)"; exit 1; }
+}
+
+# Adds the students of $EMAILS_FILE missing from $CONFIG. An email with no
+# usable GerritHub account is reported and left out — the rest go on.
+sync_roster_from_emails() {
+    [[ -n "$EMAILS_FILE" ]] || return 0
+    echo "── Adding new students from ${EMAILS_FILE} ──"
+    local out rc
+    out=$("${SCRIPT_DIR}/find_gerrit_user.sh" -f "$EMAILS_FILE" --update "$CONFIG" 2>&1) && rc=0 || rc=$?
+    grep -v '^already in ' <<< "$out" || true
+    [[ "$rc" == 0 ]] \
+        || hint " Some emails above have no usable GerritHub account — those students are left out (and not emailed) until that's fixed."
+    [[ -f "$CONFIG" ]] || { err "no students found — $CONFIG was not created"; exit 1; }
+}
+
+# Emails every student whose current secrets file hasn't already gone to
+# their address (send_student_secrets.py keeps the log). Sets EMAIL_FAILED.
+send_new_secrets() {
+    EMAIL_FAILED=""
+    [[ -n "$EMAILS_FILE" ]] || return 0
+    echo ""
+    echo "── Emailing secrets files ($([[ -n "$RESEND_ALL" ]] && echo "all students, --resend-all" || echo "only those not sent yet")) ──"
+    python3 "${SCRIPT_DIR}/send_student_secrets.py" --send \
+        --from "$EMAIL_FROM" --emails "$EMAILS_FILE" \
+        --secrets-dir "$(dirname "$CREDS_FILE")/students_secrets" \
+        ${RESEND_ALL:+--force} \
+        || EMAIL_FAILED=1
 }
 
 # Parses the entire config in one shot. Tab-separated KEY/value lines,
@@ -263,8 +339,10 @@ write_student_secrets() {
 
 main() {
     parse_args "$@"
-    load_config
     load_jenkins_connection
+    load_email_sender
+    sync_roster_from_emails
+    load_config
     refuse_admin_as_student
     refuse_unsafe_names
 
@@ -276,6 +354,9 @@ main() {
     print_credentials
     write_creds_file
     write_student_secrets
+    send_new_secrets
+    [[ -z "$EMAIL_FAILED" ]] \
+        || { err "not every student was emailed (see above) — the Jenkins setup is done; once fixed, send the rest with:\n  ${SCRIPT_DIR}/send_student_secrets.py --from ${EMAIL_FROM} --emails ${EMAILS_FILE} --secrets-dir $(dirname "$CREDS_FILE")/students_secrets --send\n(or re-run this script: already-sent students are skipped)"; exit 1; }
 }
 
 main "$@"
