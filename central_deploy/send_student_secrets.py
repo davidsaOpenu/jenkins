@@ -149,6 +149,41 @@ def build_message(sender, email, username, raw, url, attach_as):
     return msg
 
 
+def say(msg=""):
+    print(msg, flush=True)
+
+
+def warn(msg):
+    print(msg, file=sys.stderr, flush=True)
+
+
+def gmail_hint(host):
+    if host != "smtp.gmail.com":
+        return ""
+    return ("\n  Gmail needs an app password, not your normal one: turn on 2-Step "
+            "Verification\n  (myaccount.google.com/signinoptions/twosv), then create one "
+            "at\n  myaccount.google.com/apppasswords and paste its 16 letters "
+            "(spaces don't matter).")
+
+
+def summary(sent, already, skipped, failed, unsent=()):
+    say("\n── Summary " + "─" * 40)
+    say(f"  sent now     : {len(sent)}" + (f"  ({', '.join(sent)})" if sent else ""))
+    say(f"  already sent : {already}  (unchanged files — --force to resend)")
+    if skipped:
+        say(f"  skipped      : {len(skipped)}")
+        for line in skipped:
+            say(f"    - {line}")
+    if failed:
+        say(f"  failed       : {len(failed)}")
+        for line in failed:
+            say(f"    - {line}")
+    if unsent:
+        say(f"  not sent     : {len(unsent)}  ({', '.join(unsent)})")
+    if skipped or failed or unsent:
+        say("\nFix the above and re-run — students already sent their file are skipped.")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--from", dest="sender", required=True, help="your address (the From:)")
@@ -165,76 +200,141 @@ def main(argv=None):
 
     if not EMAIL.fullmatch(a.sender):
         p.error(f"--from {a.sender!r} is not an email address")
+    host, _, port = a.smtp.rpartition(":")
+    if not host or not port.isdigit():
+        p.error(f"--smtp {a.smtp!r} is not host:port")
+    if not os.path.isfile(a.emails):
+        sys.exit(f"ERROR: no email list at {a.emails} — one student email per line "
+                 "(or pass --emails <file>).")
+    if not os.path.isdir(a.secrets_dir):
+        sys.exit(f"ERROR: no {a.secrets_dir} — run ./setup_students.sh first, it "
+                 "writes each student's secrets file there.")
     log_path = os.path.join(a.secrets_dir, "sent.log")
     already = load_log(log_path)
     only = {u.lower() for u in a.only}
 
-    plan, problems = [], 0
-    for email in read_emails(a.emails):
+    emails = read_emails(a.emails)
+    say(f"Checking {len(emails)} email(s) from {os.path.relpath(a.emails)} against {GERRIT_URL} …")
+    plan, skipped, already_sent = [], [], 0
+    for email in emails:
         try:
             username, why = lookup_username(email)
-        except OSError as e:
-            sys.exit(f"ERROR: cannot reach {GERRIT_URL} ({e})")
+        except (OSError, ValueError) as e:
+            sys.exit(f"ERROR: cannot look up {email} on {GERRIT_URL} ({e}).\n"
+                     "Check this machine's internet access and re-run — nothing was sent.")
         if not username:
-            print(f"SKIP {email}: {why}", file=sys.stderr)
-            problems += 1
+            hint = {"no GerritHub account with this email":
+                        "ask the student to sign in to GerritHub once with this email",
+                    "several GerritHub accounts with this email":
+                        "ask the student which username is theirs",
+                    "GerritHub account has no username":
+                        "the student must set a username in GerritHub settings"}.get(why, "")
+            warn(f"SKIP {email}: {why}" + (f" — {hint}" if hint else ""))
+            skipped.append(f"{email}: {why}")
             continue
         if only and username.lower() not in only:
             continue
         path = os.path.join(a.secrets_dir, f"{username}.secrets.yml")
         content, why = check_secrets_file(path, username)
         if not content:
-            print(f"SKIP {email} ({username}): {why}", file=sys.stderr)
-            problems += 1
+            warn(f"SKIP {email} ({username}): {why}")
+            skipped.append(f"{email} ({username}): {why}")
             continue
         raw, url = content
         digest = hashlib.sha256(raw).hexdigest()
         if (username, email.lower(), digest) in already and not a.force:
-            print(f"already sent: {username} -> {email} (this exact file; --force to resend)")
+            say(f"  already sent: {username} -> {email}")
+            already_sent += 1
             continue
+        say(f"  to send     : {username} -> {email}")
         plan.append((email, username, path, raw, url, digest))
     for u in only - {x[1].lower() for x in plan}:
         if not any(u == k[0].lower() for k in already):
-            print(f"NOTE: --only {u}: not in {a.emails}, or skipped above", file=sys.stderr)
+            warn(f"NOTE: --only {u}: not in {a.emails}, or skipped above")
 
     if not plan:
-        print("Nothing to send.")
-        return 1 if problems else 0
-    print(f"\n{'SENDING' if a.send else 'DRY RUN — would send'} ({len(plan)}):")
+        say("\nNothing new to send.")
+        summary([], already_sent, skipped, [])
+        return 1 if skipped else 0
+    say(f"\n{'SENDING' if a.send else 'DRY RUN — would send'} ({len(plan)}):")
     for email, username, path, *_ in plan:
-        print(f"  {email:32} <- {os.path.relpath(path)}")
+        say(f"  {email:32} <- {os.path.relpath(path)}")
     if not a.send:
-        print("\nNothing sent. Add --send to send these.")
-        return 1 if problems else 0
+        say("\nNothing sent. Add --send to send these.")
+        return 1 if skipped else 0
 
-    host, _, port = a.smtp.rpartition(":")
-    hint = "a Google app password, not your normal one" if host == "smtp.gmail.com" \
-        else "your mail password"
-    password = os.environ.get("SMTP_PASSWORD") or \
-        getpass.getpass(f"SMTP password for {a.smtp_user or a.sender} ({hint}): ")
-    failed = 0
-    with smtplib.SMTP(host, int(port), timeout=30) as s:
-        s.starttls(context=ssl.create_default_context())
+    login = a.smtp_user or a.sender
+    password = os.environ.get("SMTP_PASSWORD")
+    if not password:
+        kind = "Google app password" if host == "smtp.gmail.com" else "mail password"
         try:
-            s.login(a.smtp_user or a.sender, password)
-        except smtplib.SMTPAuthenticationError as e:
-            sys.exit(f"ERROR: {host} refused the login ({e.smtp_code} "
-                     f"{e.smtp_error.decode(errors='replace')[:200]}).\n"
-                     "Gmail: use an app password (myaccount.google.com/apppasswords, "
-                     "needs 2-Step Verification), not your normal password.")
-        del password
-        for email, username, path, raw, url, digest in plan:
-            msg = build_message(a.sender, email, username, raw, url, a.attach_as)
+            password = getpass.getpass(f"\n{kind} for {login}: ")
+        except (KeyboardInterrupt, EOFError):
+            say("\nCancelled — nothing sent.")
+            return 130
+    password = password.replace(" ", "") if host == "smtp.gmail.com" else password
+    if not password:
+        sys.exit("ERROR: no password given — nothing sent." + gmail_hint(host))
+
+    sent, failed = [], []
+    say(f"Connecting to {host}:{port} …")
+    try:
+        s = smtplib.SMTP(host, int(port), timeout=30)
+    except (OSError, smtplib.SMTPException) as e:
+        sys.exit(f"ERROR: cannot connect to {host}:{port} ({e}) — nothing sent.\n"
+                 "  Check internet access, and that outgoing port "
+                 f"{port} isn't blocked here (some networks block mail ports).")
+    try:
+        with s:
             try:
-                # Envelope recipient is exactly this one address.
-                s.send_message(msg, from_addr=a.sender, to_addrs=[email])
+                s.starttls(context=ssl.create_default_context())
+            except (OSError, smtplib.SMTPException) as e:
+                sys.exit(f"ERROR: {host} TLS setup failed ({e}) — nothing sent.")
+            try:
+                s.login(login, password)
+            except smtplib.SMTPAuthenticationError as e:
+                sys.exit(f"ERROR: {host} refused the login for {login} ({e.smtp_code} "
+                         f"{e.smtp_error.decode(errors='replace')[:200].strip()}) — "
+                         "nothing sent." + gmail_hint(host))
             except smtplib.SMTPException as e:
-                print(f"FAILED {email} ({username}): {e}", file=sys.stderr)
-                failed += 1
-                continue
-            append_log(log_path, username, email, digest)
-            print(f"sent: {username} -> {email}")
-    return 1 if (problems or failed) else 0
+                # Gmail often just hangs up on a wrong password, no 535.
+                sys.exit(f"ERROR: logging in to {host} as {login} failed ({e}) — nothing sent."
+                         + gmail_hint(host))
+            del password
+            say(f"Logged in as {login}.")
+            for n, (email, username, path, raw, url, digest) in enumerate(plan, 1):
+                msg = build_message(a.sender, email, username, raw, url, a.attach_as)
+                try:
+                    # Envelope recipient is exactly this one address.
+                    s.send_message(msg, from_addr=a.sender, to_addrs=[email])
+                except smtplib.SMTPServerDisconnected as e:
+                    warn(f"FAILED {email} ({username}): {host} disconnected ({e})")
+                    failed.append(f"{email} ({username}): server disconnected")
+                    summary(sent, already_sent, skipped, failed,
+                            [u for _, u, *_ in plan[n:]])
+                    return 1
+                except smtplib.SMTPRecipientsRefused as e:
+                    code, reply = next(iter(e.recipients.values()))
+                    why = f"address refused ({code} {reply.decode(errors='replace').strip()})"
+                    warn(f"FAILED {email} ({username}): {why} — check the address in {a.emails}")
+                    failed.append(f"{email} ({username}): {why}")
+                    continue
+                except smtplib.SMTPException as e:
+                    warn(f"FAILED {email} ({username}): {e}")
+                    failed.append(f"{email} ({username}): {e}")
+                    continue
+                append_log(log_path, username, email, digest)
+                sent.append(username)
+                say(f"  [{n}/{len(plan)}] sent: {username} -> {email}")
+    except KeyboardInterrupt:
+        say("\nInterrupted.")
+        summary(sent, already_sent, skipped, failed,
+                [u for _, u, *_ in plan if u not in sent])
+        return 130
+    summary(sent, already_sent, skipped, failed)
+    if sent:
+        say(f"\nLogged in {os.path.relpath(log_path)}.")
+    return 1 if (skipped or failed) else 0
 
 
 if __name__ == "__main__":

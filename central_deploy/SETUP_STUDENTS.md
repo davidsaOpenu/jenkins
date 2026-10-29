@@ -72,6 +72,16 @@ the central machine it finds it by itself; elsewhere, also
 
    (Optional custom paths: `./setup_students.sh <config.yaml> <creds_output.yaml>`)
 
+   With `emails.txt` here (and the default `students.yaml`), it also does
+   steps 1 and 5 itself: it first adds the students of `emails.txt` missing
+   from `students.yaml`, and at the end emails each student their secrets
+   file — only those not sent yet (`students_secrets/sent.log`), so adding
+   a student is just: add their email to `emails.txt`, re-run. It asks for
+   the sender (or `--from <you>@gmail.com`, `STUDENTS_EMAIL_FROM`) and the
+   Gmail app password (step 5). `--resend-all` emails everyone again,
+   `--no-email` skips both, `--emails <file>` uses another list (also with
+   a custom `config.yaml`, which otherwise never emails).
+
 4. It writes two things next to each other (all owner-only, gitignored):
    - `students_credentials.yaml` — every student, for your records.
      Never send it: it holds everyone's password and agent secret.
@@ -85,7 +95,8 @@ the central machine it finds it by itself; elsewhere, also
 
 5. Send each student **their own** `students_secrets/<name>.secrets.yml`
    — that one file, nothing else — privately and one-to-one (never a
-   group channel). To email them all from `emails.txt`:
+   group channel). `setup_students.sh` already did this if `emails.txt`
+   was there (step 3). To email them all from `emails.txt` separately:
 
        ./send_student_secrets.py --from <you>@gmail.com          # dry run
        ./send_student_secrets.py --from <you>@gmail.com --send
