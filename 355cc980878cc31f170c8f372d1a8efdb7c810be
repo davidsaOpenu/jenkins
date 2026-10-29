@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e8df35b_a8bede49",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-10-29T06:57:56Z",
+      "side": 1,
+      "message": "Thanks for the change, Michael. No need in gerrit change id lock as well I guess.",
+      "revId": "355cc980878cc31f170c8f372d1a8efdb7c810be",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
