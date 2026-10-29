@@ -22,7 +22,11 @@ pipeline {
         )
         timeout(time: 10, unit: 'MINUTES')
         timestamps()
-        disableConcurrentBuilds()
+        // Runs every 15 minutes but can wait hours for the node's single
+        // executor behind a long build. A newer build aborts the older one
+        // still waiting, instead of queueing behind it, so at most one
+        // periodic-tasks build is ever pending.
+        disableConcurrentBuilds(abortPrevious: true)
     }
 
 
