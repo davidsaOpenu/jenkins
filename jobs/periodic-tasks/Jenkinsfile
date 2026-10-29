@@ -3,7 +3,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob
 import hudson.model.Result
 
 properties([
-    [$class: 'PriorityJobProperty', priority: 1]
+    [$class: 'PriorityJobProperty', useJobPriority: true, priority: 1]
 ])
 
 pipeline {

@@ -105,6 +105,32 @@ unclassified:
           gerritBuildUnstableCodeReviewValue: 0
           gerritBuildNotBuiltVerifiedValue: 0
           gerritBuildNotBuiltCodeReviewValue: 0
+  # Queue order when builds wait for a node's single executor: each job's
+  # own priority, from its Jenkinsfile's PriorityJobProperty (which must
+  # set useJobPriority: true). 1 runs first — periodic-tasks, so its
+  # maintenance runs as soon as a long build frees the node, ahead of
+  # builds queued before it, never in the middle of one. 20 levels for the
+  # Jenkinsfiles' 1..20; a job with none (jenkins-dr-test) gets 10.
+  # Pipelines' `agent { }` waits take their job's priority too. Without
+  # this, every item gets the plugin's default and the queue is FIFO.
+  prioritySorterConfiguration:
+    onlyAdminsMayEditPriorityConfiguration: true
+    strategy:
+      absoluteStrategy:
+        numberOfPriorities: 20
+        defaultPriority: 10
+  priorityConfiguration:
+    jobGroups:
+      - id: 0
+        description: "All jobs: priority from the job"
+        jobGroupStrategy: "allJobs"
+        priority: -1
+        runExclusive: false
+        usePriorityStrategies: true
+        priorityStrategies:
+          - priorityStrategy:
+              id: 0
+              priorityStrategy: "jobPropertyStrategy"
 
 jobs:
   - script: |

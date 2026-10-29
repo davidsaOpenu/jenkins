@@ -4,7 +4,7 @@
 @Library('osw-ci') _
 
 properties([
-    [$class: 'PriorityJobProperty', priority: 10]
+    [$class: 'PriorityJobProperty', useJobPriority: true, priority: 10]
 ])
 
 pipeline {
