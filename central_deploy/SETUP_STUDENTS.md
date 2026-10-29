@@ -4,21 +4,18 @@ Deploy (or update) central first — `DEPLOY_CENTRAL.md` — and run this from
 a checkout of the same version, so students never get an older deploy's
 permissions and the name check below applies.
 
-## Before you start: trust central's certificate
+## Central's certificate
 
 Unless `gerrit_central.yml` named a real certificate (`tls_cert_file`),
-the deploy made a self-signed one, and both `setup_students.sh` and
-`reset_students.sh` refuse to talk to Jenkins until you tell them to trust
-it (they stop with "certificate isn't trusted"). In every new shell,
-before running either script:
+the deploy made a self-signed one, `/etc/jenkins-dr/tls/jenkins-dr.crt`.
+On the central machine `setup_students.sh` and `reset_students.sh` trust
+it by themselves. Running them from another machine? Copy it there first
+and, in every new shell, point them at it:
 
-    export CURL_CA_BUNDLE=/etc/jenkins-dr/tls/jenkins-dr.crt
+    scp central:/etc/jenkins-dr/tls/jenkins-dr.crt .
+    export CURL_CA_BUNDLE=$PWD/jenkins-dr.crt
 
-That file is on the central machine (made by the deploy, readable by
-everyone; its `.key` next to it is not, and never leaves the machine).
-Running the scripts from another machine? Copy the `.crt` there first
-(e.g. `scp central:/etc/jenkins-dr/tls/jenkins-dr.crt .`) and export that
-path instead. Check it works — this must print `200`:
+Check it works — this must print `200`:
 
     curl -s -o /dev/null -w '%{http_code}\n' <jenkins_url>/login
 
@@ -84,7 +81,7 @@ the central machine it finds it by itself; elsewhere, also
      as a comment on top. The script lists them at the end.
 
    If it says "No certificate embedded" but central uses the self-signed
-   one, set `CENTRAL_CA_CERT` (see "Before you start") and re-run.
+   one, set `CENTRAL_CA_CERT` (see "Central's certificate") and re-run.
 
 5. Send each student **their own** `students_secrets/<name>.secrets.yml`
    — that one file, nothing else — privately and one-to-one (never a

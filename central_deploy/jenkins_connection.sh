@@ -33,6 +33,14 @@ check_jenkins_connection() {
     local errfile rc out code redirect msg
     errfile=$(mktemp)
     out=$(curl -sS -o /dev/null --max-time 20 -w '%{http_code} %{redirect_url}' "${JENKINS_URL}/login" 2>"$errfile") && rc=0 || rc=$?
+    # On the central machine, untrusted by default: try its own self-signed
+    # certificate, and keep it for every curl after. Only as a fallback — the
+    # file stays behind after switching to a real certificate.
+    if [[ ( "$rc" == 51 || "$rc" == 60 ) && -z "${CURL_CA_BUNDLE:-}" && -r "$CENTRAL_SELF_SIGNED_CERT" ]] \
+        && out=$(CURL_CA_BUNDLE="$CENTRAL_SELF_SIGNED_CERT" curl -sS -o /dev/null --max-time 20 -w '%{http_code} %{redirect_url}' "${JENKINS_URL}/login" 2>"$errfile"); then
+        rc=0
+        export CURL_CA_BUNDLE="$CENTRAL_SELF_SIGNED_CERT"
+    fi
     code="${out%% *}"
     redirect="${out#* }"
     # "curl: (28) Connection timed out…" → "Connection timed out…"
@@ -44,7 +52,7 @@ check_jenkins_connection() {
             if [[ -n "${CURL_CA_BUNDLE:-}" ]]; then
                 err "${JENKINS_URL} presents a certificate that CURL_CA_BUNDLE (${CURL_CA_BUNDLE}) doesn't vouch for — point it at central's own ${CENTRAL_SELF_SIGNED_CERT} (a copy of it, if not on the central machine)"
             elif [[ -r "$CENTRAL_SELF_SIGNED_CERT" ]]; then
-                err "${JENKINS_URL}'s certificate isn't trusted (self-signed) — run first:\n  export CURL_CA_BUNDLE=${CENTRAL_SELF_SIGNED_CERT}"
+                err "${JENKINS_URL}'s certificate isn't trusted, by the system or by ${CENTRAL_SELF_SIGNED_CERT} — check jenkins_url names this machine, and that a real certificate's intermediates are in tls_cert_file"
             else
                 err "${JENKINS_URL}'s certificate isn't trusted (self-signed?) — copy ${CENTRAL_SELF_SIGNED_CERT} from the central machine, then run first:\n  export CURL_CA_BUNDLE=<path to that copy>"
             fi
