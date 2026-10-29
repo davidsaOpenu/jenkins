@@ -71,7 +71,7 @@ pipeline {
     stages {
         stage('Approval') {
             steps {
-                // agent none above: no node or lock is held while it
+                // agent none above: no node is held while it
                 // waits. Central's own builds (timer, admin) pass
                 // straight through to the built-in node.
                 script {
@@ -83,19 +83,12 @@ pipeline {
         stage('Build') {
             agent { label buildLabel() }
             steps {
-                // No job-wide lock: one executor per student node already
-                // means one build at a time per student; the per-change
-                // lock keeps a change's patch sets in order.
+                // No locks: every node has one executor, so a build here
+                // already runs alone on its node.
                 script {
                     currentBuild.description = assertOwnNode()
                     timeout(time: 220, unit: 'MINUTES') {
-                        if (env.GERRIT_CHANGE_ID) {
-                            lock(resource: "gerrit-${env.GERRIT_CHANGE_ID}", inversePrecedence: true) {
-                                runPipeline()
-                            }
-                        } else {
-                            runPipeline()
-                        }
+                        runPipeline()
                     }
                 }
             }
