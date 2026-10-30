@@ -239,6 +239,65 @@ three lines (with the `live/<name>/` paths) as an executable
 from IT usually last a year: put the end date (from the check in step 1)
 in a calendar. Students' agents need nothing on renewal.
 
+### Serving the VM images
+
+The deploy doesn't do this part. `simulator-docker-ng-infra`'s
+`test_on_podman_VM.sh` boots a prepared Ubuntu image
+(`ubuntu-24.04-server-cloudimg-amd64-podman.img`). On central it reads
+the image straight from `/home/davidsa/public_html`; anywhere else it
+downloads the image from central over https. After a recovery:
+
+1. **Put the images back** in `/home/davidsa/public_html` from a backup,
+   or rebuild them with `scripts/images/` (`1_download_image.sh`,
+   `2_resize_image.sh`, `3_prepare_image.sh`). Each image must be
+   readable by others (`chmod 644`).
+
+2. **Let nginx and jenkins into the home directory.** `/home/davidsa` is
+   `drwx--x---` with an ACL that gives its group **nothing**
+   (`group::---`; the `--x` that `ls` shows for the group is the ACL mask).
+   So adding `www-data` or `jenkins` to the `davidsa` group doesn't help:
+   each needs its own execute-only entry. That lets it reach files under
+   the directory without listing it:
+
+       sudo setfacl -m u:www-data:x /home/davidsa
+       sudo setfacl -m u:jenkins:x /home/davidsa
+       getfacl -p /home/davidsa      # expect user:www-data:--x and user:jenkins:--x
+
+   An ACL is checked on every access, so this needs no restart.
+
+3. **Serve `public_html` from nginx.**
+   - On the https port: the shared server on 8080 in
+     `/etc/nginx/nginx.conf` (the one `nginx_shared_server` attaches
+     Jenkins to) has the directory as its root. Add it back if it's
+     missing:
+
+         root /home/davidsa/public_html;
+
+   - On plain http, port 80, for local use: inside the `server { listen 80
+     default_server; … }` block of `/etc/nginx/sites-available/default`,
+     add (keep both trailing slashes):
+
+         location /images/ {
+             alias /home/davidsa/public_html/;
+             autoindex off;
+         }
+
+   Then:
+
+       sudo nginx -t && sudo systemctl restart nginx
+
+4. **Check** that both URLs return `HTTP/1.1 200 OK`:
+
+       curl -sI  --noproxy '*' http://localhost/images/ubuntu-24.04-server-cloudimg-amd64-podman.img | head -1
+       curl -skI --noproxy '*' https://192.114.0.189:8080/ubuntu-24.04-server-cloudimg-amd64-podman.img | head -1
+
+   A `403` (even for a file that doesn't exist) means nginx still can't
+   get into `/home/davidsa`, so recheck step 2. A `404` on `/images/`
+   means nginx hasn't loaded the new location, so restart it.
+
+Everything in `public_html` becomes downloadable by anyone who can reach
+port 80 or 8080, so keep only files there that are fine to publish.
+
 ## Jobs (`--with-repo-jobs`)
 
 `central_deploy/create_repo_jobs.sh` creates one pipeline job per
@@ -398,6 +457,7 @@ Useful checks: `systemctl status jenkins nginx`, `sudo ss -ltnp`,
 | `/root/.ssh/<ssh_key_name>` | The GerritHub SSH key (also copied into Jenkins). |
 | `/etc/nginx/snippets/jenkins-dr-*.conf` | Jenkins' nginx location and TLS settings. |
 | `/etc/nginx/conf.d/jenkins.conf` | Jenkins' own nginx server (not with `nginx_shared_server`). |
+| `/home/davidsa/public_html` | VM images for the jobs, served by nginx (see "Serving the VM images"); not set up by the deploy. |
 | `/etc/nginx/**.bak-<timestamp>` | Backups of nginx files before each edit — copy one back and `sudo systemctl reload nginx` to undo. |
 
 ## Notes
