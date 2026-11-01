@@ -334,6 +334,27 @@ Pipelines that call Jenkins' internal API (e.g. `periodic-tasks`) need
 their methods approved once in Manage Jenkins → In-process Script Approval
 after their first real run.
 
+### Preparing VM images without root
+
+`simulator-docker-ng-infra`'s `test_on_podman_VM.sh` prepares its VM image as
+`jenkins`, with no sudo. `virt-customize` needs two things from the host, and
+the simulator's `1_install_prereqs.sh` sets up both:
+
+- **Membership in `kvm`**, for `/dev/kvm`. It takes effect at the next login;
+  a running Jenkins agent needs a restart.
+- **Read access to `/boot/vmlinuz-*`**, because `virt-customize` boots the
+  host's kernel. On Ubuntu the kernels stay `chmod 0600`, with an ACL entry
+  for the `kvm` group only:
+
+      sudo setfacl -m g:kvm:r /boot/vmlinuz-*
+
+  `/etc/kernel/postinst.d/zz-vmlinuz-kvm-read` does the same for each new
+  kernel, which Ubuntu installs as 0600. Don't `chmod 0644` them: that opens
+  them to every local user. `ls` shows `-rw-r-----+` because its group column
+  is the ACL mask; the file's own group still gets nothing.
+
+      getfacl -p /boot/vmlinuz-$(uname -r)   # expect group:kvm:r-- and other::---
+
 ## Updating later
 
 Re-run the same `setup_central.sh` command after changing
